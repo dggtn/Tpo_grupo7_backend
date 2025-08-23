@@ -11,7 +11,7 @@
     
 c) En tu cuenta de google, ir a manage your google account > Security > How you sign in to Google > 2-Step Verification. Aqui habilitar esta "verificación doble" y entrar a App Passwords.
 
-   Aqui seguir las instrucciones para crear una app password, que va a contener 16 caracteres separados en cuatro espacios. 
+   Aqui seguir las instrucciones para crear una app password, que va a contener 16 caracteres separados en tres espacios. 
    
    En caso de que "App Passwords" no aparezca por ningun lado, asegurarse de que tengas habilitada la doble verificación, y luego buscar en el navegador de google "App passwords gmail" 
    (App Passwords - Sign in - Google Accounts). Aqui crear la password de 16 caracteres.
