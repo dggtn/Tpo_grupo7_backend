@@ -54,6 +54,7 @@ public class AuthenticationService {
 		PendingUser pendingUser = PendingUser.builder()
 				.username(request.getUsername()).email(request.getEmail()).password(request.getPassword())
 				.firstName(request.getFirstName()).lastName(request.getLastName())
+				.age(request.getAge()).address(request.getAddress()).urlAvatar(request.getUrlAvatar())
 				.verificationCode(code)
 				.expiryDate(LocalDateTime.now().plusMinutes(15))
 				.build();
@@ -83,7 +84,9 @@ public class AuthenticationService {
 		finalRequest.setPassword(pendingUser.getPassword());
 		finalRequest.setFirstName(pendingUser.getFirstName());
 		finalRequest.setLastName(pendingUser.getLastName());
-
+		finalRequest.setAge(pendingUser.getAge());
+		finalRequest.setAddress(pendingUser.getAddress());
+		finalRequest.setUrlAvatar(pendingUser.getUrlAvatar());
 		userService.createUser(finalRequest); 
 
 		pendingUserRepository.delete(pendingUser);

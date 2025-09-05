@@ -45,7 +45,11 @@ public class UserService {
             request.getLastName(),
             request.getEmail(),
 			      passwordEncoder.encode(request.getPassword()),
-            Role.USER
+            Role.USER,
+            request.getAge(),
+            request.getAddress(),
+            request.getUrlAvatar()
+            
         );
         
         return userRepository.save(user);

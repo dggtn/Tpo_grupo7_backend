@@ -43,6 +43,12 @@ public class User implements UserDetails{
     private String password;
     @Enumerated(EnumType.STRING)
     private Role role;
+    @Column
+    private Integer age;
+    @Column
+    private String address;
+    @Column(columnDefinition = "LONGTEXT")
+    protected String urlAvatar;
 
     public UserDTO toDTO() {
         return new UserDTO(
@@ -52,7 +58,10 @@ public class User implements UserDetails{
             this.lastName,
             this.email,
             this.password,
-            this.role
+            this.role,
+            this.age,
+            this.address,
+            this.urlAvatar
             );
     }
 

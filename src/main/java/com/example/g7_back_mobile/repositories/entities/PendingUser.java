@@ -19,6 +19,9 @@ public class PendingUser {
     private String password;
     private String firstName;
     private String lastName;
+    private Integer age;
+    private String address;
+    protected String urlAvatar;
 
     // Campos para la verificación
     private String verificationCode;
