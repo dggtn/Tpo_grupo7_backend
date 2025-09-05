@@ -3,7 +3,6 @@ package com.example.g7_back_mobile.controllers.dtos;
 import com.example.g7_back_mobile.repositories.entities.Role;
 import com.example.g7_back_mobile.repositories.entities.User;
 
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
