@@ -1,5 +1,8 @@
 package com.example.g7_back_mobile.controllers.auth;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,6 +52,12 @@ public class AuthenticationController {
         }
   }
 
+    @Operation(summary = "Autenticar usuario", description = "Permite iniciar sesión a un usuario registrado")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
+            @ApiResponse(responseCode = "400", description = "Credenciales inválidas"),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
   @PostMapping("/authenticate")
     public ResponseEntity<ResponseData<?>> authenticate(
         @RequestBody AuthenticationRequest request) {
@@ -66,5 +75,5 @@ public class AuthenticationController {
     }
   }
 
-  
+
 

@@ -31,14 +31,23 @@ public class SecurityConfig {
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                http.csrf(csrf -> csrf
+						.ignoringRequestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**"))
+					.headers(headers -> headers
+							.frameOptions(frameOptions -> frameOptions.sameOrigin()))
+					.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                     .csrf(AbstractHttpConfigurer::disable)
                     .authorizeHttpRequests(req -> req
-                            //Auth
+							//h2-console
+							.requestMatchers("/h2-console/**").permitAll()
+							// Swagger
+							.requestMatchers("/swagger-ui/**").permitAll()
+							.requestMatchers("/v3/api-docs/**").permitAll()
+							//Auth
                             .requestMatchers("/auth/**").permitAll()
                             // User
                             .requestMatchers("/users/**").authenticated()
-                            
+
                             // Default
                             .anyRequest().authenticated())
                     .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
@@ -51,10 +60,10 @@ public class SecurityConfig {
 	@Bean
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration corsConfig = new CorsConfiguration();
-		corsConfig.setAllowedOrigins(List.of("*")); 
-		corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); 
-		corsConfig.setAllowCredentials(false); 
-		corsConfig.addAllowedHeader("*"); 
+		corsConfig.setAllowedOrigins(List.of("*"));
+		corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+		corsConfig.setAllowCredentials(false);
+		corsConfig.addAllowedHeader("*");
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", corsConfig);
