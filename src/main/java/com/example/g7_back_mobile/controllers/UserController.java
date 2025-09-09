@@ -6,16 +6,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.g7_back_mobile.controllers.dtos.ResponseData;
 import com.example.g7_back_mobile.controllers.dtos.UserDTO;
 import com.example.g7_back_mobile.repositories.entities.User;
 import com.example.g7_back_mobile.services.UserService;
 import com.example.g7_back_mobile.services.exceptions.UserException;
+
+import java.util.stream.Collectors;
+import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -47,12 +47,28 @@ public class UserController {
 
             }catch (UserException error) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseData.error(error.getMessage()));
-      
+
             } catch (Exception error) {
                 System.out.printf("[UserController.updateUser] -> %s", error.getMessage() );
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("No se pudo actualizar el usuario"));
         }
     }
 
-    
+    @GetMapping
+    public ResponseEntity<ResponseData<?>> getAllUsers() {
+        try {
+            List<User> users = userService.getAllUsers();
+            List<UserDTO> userDTOs = users.stream()
+                    .map(User::toDTO)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseData.success(userDTOs));
+        } catch (Exception error) {
+            System.out.printf("[UserController.getAllUsers] -> %s", error.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseData.error("No se pudieron obtener los usuarios"));
+        }
+    }
+
 }
