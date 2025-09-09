@@ -15,11 +15,11 @@ import jakarta.transaction.Transactional;
 public class UserService {
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-  
+
      public User getUserByUsername(String username) throws Exception {
         try {
           return userRepository.findByUsername(username).orElseThrow(() -> new UserException("Usuario no encontrado"));
@@ -30,14 +30,14 @@ public class UserService {
         }
     }
 
-   
+
 	@Transactional
     public User createUser(RegisterRequest request) {
-        
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email '" + request.getEmail() + "' already exists");
         }
-        
+
         User user = new User(
             null,
             request.getUsername(),
@@ -49,12 +49,12 @@ public class UserService {
             request.getAge(),
             request.getAddress(),
             request.getUrlAvatar()
-            
+
         );
-        
+
         return userRepository.save(user);
     }
-    
+
    public User updateUser(User user) throws Exception {
         try {
           return userRepository.save(user);
@@ -62,6 +62,10 @@ public class UserService {
           throw new Exception("[UserService.updateUser] -> " + error.getMessage());
         }
     }
-    
+
+    // En UserService.java
+    public java.util.List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
 
 }
