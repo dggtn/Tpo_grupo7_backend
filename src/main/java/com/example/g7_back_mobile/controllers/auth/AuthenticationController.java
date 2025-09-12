@@ -52,8 +52,8 @@ public class AuthenticationController {
         }
   }
 
-    @Operation(summary = "Autenticar usuario", description = "Permite iniciar sesión a un usuario registrado")
-    @ApiResponses(value = {
+  @Operation(summary = "Autenticar usuario", description = "Permite iniciar sesión a un usuario registrado")
+  @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
             @ApiResponse(responseCode = "400", description = "Credenciales inválidas"),
             @ApiResponse(responseCode = "500", description = "Error interno del servidor")

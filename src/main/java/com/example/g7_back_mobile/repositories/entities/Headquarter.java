@@ -1,5 +1,6 @@
 package com.example.g7_back_mobile.repositories.entities;
 
+import com.example.g7_back_mobile.controllers.dtos.HeadquarterDTO;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
@@ -36,4 +37,17 @@ public class Headquarter {
     @JoinColumn(name = "location_id")
     @JsonManagedReference
     private Location location;
+
+    public HeadquarterDTO toDTO(){
+        return new HeadquarterDTO(
+            this.id,
+            this.name,
+            this.phone,
+            this.address,
+            this.email,
+            this.whattsapp,
+            this.location
+          
+        );
+    }
 }

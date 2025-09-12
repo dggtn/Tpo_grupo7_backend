@@ -3,6 +3,7 @@ package com.example.g7_back_mobile.repositories.entities;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.g7_back_mobile.controllers.dtos.InscriptionDTO;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.CascadeType;
@@ -44,5 +45,18 @@ public class Inscription {
     private String estado; // ACTIVA, CANCELADA, FINALIZADA
     
     @OneToMany(mappedBy = "inscripcion", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<ClassAttend> asistencias;
+    private List<CourseAttend> asistencias;
+
+    public InscriptionDTO toDTO(){
+        return new InscriptionDTO(
+            
+            this.id,
+            this.user,
+            this.shift,
+            this.fechaInscripcion,
+            this.estado,
+            this.asistencias
+            
+        );
+    }
 }

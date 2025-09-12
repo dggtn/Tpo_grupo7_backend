@@ -1,13 +1,25 @@
 package com.example.g7_back_mobile.services;
 
-import com.example.g7_back_mobile.controllers.dtos.ShiftsDTO;
+import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
+import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
+import com.example.g7_back_mobile.repositories.CourseRepository;
+import com.example.g7_back_mobile.repositories.HeadquarterRepository;
 import com.example.g7_back_mobile.repositories.ShiftRepository;
+import com.example.g7_back_mobile.repositories.TeacherRepository;
+import com.example.g7_back_mobile.repositories.entities.Course;
+import com.example.g7_back_mobile.repositories.entities.Headquarter;
 import com.example.g7_back_mobile.repositories.entities.Shift;
 import com.example.g7_back_mobile.repositories.entities.Teacher;
+import com.example.g7_back_mobile.services.exceptions.CourseException;
+import com.example.g7_back_mobile.services.exceptions.HeadquarterException;
+import com.example.g7_back_mobile.services.exceptions.ShiftException;
+import com.example.g7_back_mobile.services.exceptions.TeacherException;
+
+import jakarta.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,110 +29,100 @@ public class ShiftService {
     @Autowired
     private ShiftRepository shiftRepository;
 
-    public List<ShiftsDTO> getAvailableShifts() {
+    @Autowired
+    private CourseRepository courseRepository;
+
+    @Autowired
+    private HeadquarterRepository headquarterRepository;
+
+    @Autowired
+    private TeacherRepository teacherRepository;
+
+     public List<ShiftDTO> getAvailableShifts() {
         List<Shift> shifts = shiftRepository.findAll();
         return shifts.stream()
-                .map(this::convertToDTO)
+                .map(Shift::toDTO)
                 .collect(Collectors.toList());
     }
 
-    private ShiftsDTO convertToDTO(Shift shift) {
-        ShiftsDTO dto = new ShiftsDTO();
 
-        dto.setShift(String.valueOf(shift.getId()));
-
-        // Mapear sede
-        if (shift.getSede() != null) {
-            dto.setSede(shift.getSede().getName());
-        }
-
-        // Mapear disciplina (asumiendo que está en la clase)
-        if (shift.getClase() != null) {
-            dto.setDisciplina(shift.getClase().getName());
-            dto.setClassName(shift.getClase().getName());
-        }
-
-        // Convertir LocalDateTime a LocalDate
-        if (shift.getLocalTime() != null) {
-            dto.setFecha(shift.getLocalTime().toLocalDate());
-        }
-
-        // Mapear deportes
-        if (shift.getSportType() != null) {
-            dto.setSports(shift.getSportType().getSportTypeName());
-        }
-
-        // Mapear profesores
-        if (shift.getTeachers() != null && !shift.getTeachers().isEmpty()) {
-            String teachersStr = shift.getTeachers().stream()
-                    .map(Teacher::getName)
-                    .collect(Collectors.joining(", "));
-            dto.setTeachers(teachersStr);
-        }
-
-        return dto;
+     public Shift updateShift(Shift shift) throws Exception {
+         try {
+            if (!shiftRepository.existsById(shift.getId())) 
+              throw new ShiftException("El cronograma con id: '" + shift.getId() + "' no existe.");
+            
+            Shift updatedShift = shiftRepository.save(shift);
+            return updatedShift;
+          } catch (ShiftException error) {
+            throw new ShiftException(error.getMessage());
+          } catch (Exception error) {
+            throw new Exception("[ShiftService.updateShift] -> " + error.getMessage());
+          }
     }
 
-    public ShiftsDTO updateShift(Long id, ShiftsDTO shiftDTO) {
-        // Verificar si el turno existe
-        Shift existingShift = shiftRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Turno no encontrado con id: " + id));
+    public Shift saveCronograma(long courseId, Long sedeId, Long teacherId, CreateShiftRequest request) throws Exception {
+		Course course = courseRepository.findById(courseId)
+			.orElseThrow(() -> new CourseException("Curso no encontrado con ID: " + courseId));
 
-        // Actualizar los datos del turno existente
-        updateShiftData(existingShift, shiftDTO);
+		Headquarter sede = headquarterRepository.findById(sedeId)
+			.orElseThrow(() -> new HeadquarterException("Sede no encontrada con ID: " + sedeId));
 
-        // Guardar los cambios
-        Shift updatedShift = shiftRepository.save(existingShift);
+		if (!course.getSedes().contains(sede)) {
+			throw new Exception("La sede con ID " + sedeId + " no está asignada a este curso.");
+		}
 
-        // Convertir la entidad actualizada a DTO
-        return convertToDTO(updatedShift);
+        Teacher teacher = teacherRepository.findById(teacherId)
+			.orElseThrow(() -> new TeacherException("Profesor no encontrada con ID: " + teacherId));
+
+        if (!course.getTeachers().contains(teacher)) {
+			throw new Exception("El profesor con ID " + teacherId + " no está asignada a este curso.");
+		}
+
+		Shift newSchedule = Shift.builder()
+				.clase(course)
+				.sede(sede)
+                .teacher(teacher)
+				.horaInicio(request.getHoraInicio())
+				.horaFin(request.getHoraFin())
+				.vacancy(request.getVacancy())
+				.diaEnQueSeDicta(request.getDiaEnQueSeDicta())
+				.build();
+
+		return shiftRepository.save(newSchedule);
+	}
+
+    public Shift updateCronograma(Shift courseSchedule) throws Exception {
+          try {
+            if (!shiftRepository.existsById(courseSchedule.getId())) 
+              throw new ShiftException("El cronograma con id: '" + courseSchedule.getId() + "' no existe.");
+            
+            Shift updatedCourseSched = shiftRepository.save(courseSchedule);
+            return updatedCourseSched;
+          } catch (ShiftException error) {
+            throw new ShiftException(error.getMessage());
+          } catch (Exception error) {
+            throw new Exception("[Controlador.updateCourseSchedule] -> " + error.getMessage());
+          }
     }
+    
 
-    private void updateShiftData(Shift shift, ShiftsDTO dto) {
-        // Actualizar fecha si se proporciona
-        if (dto.getFecha() != null) {
-            // Preservar la hora original si es posible
-            LocalDateTime currentTime = shift.getLocalTime();
-            int hour = 0, minute = 0;
-            if (currentTime != null) {
-                hour = currentTime.getHour();
-                minute = currentTime.getMinute();
-            }
-            shift.setLocalTime(dto.getFecha().atTime(hour, minute));
+	@Transactional
+    public void deleteCourseSchedule(Long id) throws Exception {
+          try {
+              
+			  shiftRepository.findById(id).orElseThrow(() -> new ShiftException("El cronograma con id " + id + " no existe."));
+			  shiftRepository.deleteById(id);
+			
+          } catch (Exception error) {
+            throw new Exception("[Controlador.deleteCourseSchedule] -> " + error.getMessage());
+          }
         }
 
-        // Aquí necesitarías repositorios adicionales para buscar entidades relacionadas
+	public List<ShiftDTO> findSchedByCourse(Long courseId) {
+        return shiftRepository.findByClaseId(courseId)
+                .stream()
+                .map(Shift::toDTO)
+                .collect(Collectors.toList());
+    	}
 
-        // Ejemplo: Actualizar sede si se proporciona el nombre
-        // if (dto.getSede() != null) {
-        //     Headquarter headquarter = headquarterRepository.findByName(dto.getSede());
-        //     shift.setSede(headquarter);
-        // }
-
-        // Actualizar clase/disciplina
-        // if (dto.getDisciplina() != null) {
-        //     Class clase = classRepository.findByName(dto.getDisciplina());
-        //     shift.setClase(clase);
-        // }
-
-        // Actualizar tipo de deporte
-        // if (dto.getSports() != null) {
-        //     Sport sport = sportRepository.findBySportTypeName(dto.getSports());
-        //     shift.setSportType(sport);
-        // }
-
-        // Para actualizar profesores, necesitarías procesarlos si vienen como una lista
-    }
-
-    public ShiftsDTO createShift(ShiftsDTO shiftDTO) {
-        // Convertir DTO a entidad
-        Shift newShift = new Shift();
-        updateShiftData(newShift, shiftDTO);
-
-        // Guardar la entidad
-        Shift savedShift = shiftRepository.save(newShift);
-
-        // Convertir la entidad guardada de vuelta a DTO
-        return convertToDTO(savedShift);
-    }
 }
