@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 public class Shift {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long id;
+    private Long id;
     private String description;
     @Column(name = "hora_inicio", nullable = false)
     private String horaInicio;

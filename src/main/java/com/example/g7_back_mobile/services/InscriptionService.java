@@ -11,13 +11,16 @@ import com.example.g7_back_mobile.controllers.dtos.InscripcionExitosaDTO;
 import com.example.g7_back_mobile.controllers.dtos.InscriptionDTO;
 import com.example.g7_back_mobile.controllers.dtos.ReservationDTO;
 import com.example.g7_back_mobile.repositories.InscriptionRepository;
+import com.example.g7_back_mobile.repositories.ReservatioRepository;
 import com.example.g7_back_mobile.repositories.ShiftRepository;
 import com.example.g7_back_mobile.repositories.UserRepository;
 import com.example.g7_back_mobile.repositories.entities.Course;
 import com.example.g7_back_mobile.repositories.entities.Inscription;
 import com.example.g7_back_mobile.repositories.entities.MetodoDePago;
+import com.example.g7_back_mobile.repositories.entities.Reservation;
 import com.example.g7_back_mobile.repositories.entities.Shift;
 import com.example.g7_back_mobile.repositories.entities.User;
+import com.example.g7_back_mobile.services.exceptions.UserException;
 
 import jakarta.transaction.Transactional;
 
@@ -33,11 +36,78 @@ public class InscriptionService {
     @Autowired
     private InscriptionRepository inscripcionRepository;
 
+	@Autowired
+	private ReservatioRepository reservationRepository;
+
     @Autowired
     private EmailService emailService;
 
+	@Transactional
+	public void reserveClass (ReservationDTO reservationDTO){
+
+		// 1. BÚSQUEDA DE ENTIDADES
+		User user = userRepository.findById(reservationDTO.getIdUser())
+				.orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + reservationDTO.getIdUser()));
+
+		Shift courseSchedule = shiftRepository.findById(reservationDTO.getIdShift())
+				.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
+
+		// 2. VALIDACIONES DE NEGOCIO
+		if (courseSchedule.getVacancy() <= 0) {
+			throw new IllegalStateException("No quedan cupos disponibles para este curso.");
+		}
+		inscripcionRepository.findByUserAndShift(user, courseSchedule)
+			.ifPresent(inscripcion -> {
+				if ("ACTIVA".equals(inscripcion.getEstado())) {
+					throw new IllegalArgumentException("El usuario ya está inscripto y activo en este curso.");
+				}
+			});
+		
+		// 4. CREACIÓN DE LA RESERVA
+		Reservation nuevaReservation = Reservation.builder()
+				
+				.idUser(user.getId())
+				.idShift(courseSchedule.getId())
+				.expiryDate(LocalDateTime.now().plusHours(48))
+				.build();
+		
+		reservationRepository.save(nuevaReservation);
+
+		// 5. ACTUALIZACIÓN DE VACANTES
+		courseSchedule.setVacancy(courseSchedule.getVacancy() - 1);
+		shiftRepository.save(courseSchedule);
+	
+	}
+
+	@Transactional
+	public InscripcionExitosaDTO enrollWithReserve(ReservationDTO reservationDTO){
+		// 1. EXISTE UNA RESERVA 
+		Reservation reservation = reservationRepository.findById(reservationDTO.getIdUser())
+				.orElseThrow(() -> new UserException("No se encontró un reserva para este usuario. Puede que haya expirado."));
+
+		if(reservation.getExpiryDate().isBefore(LocalDateTime.now())){
+			reservationRepository.delete(reservation);
+			throw new UserException("El tiempo de reserva ha expirado.");
+		}
+
+		Shift courseSchedule = shiftRepository.findById(reservationDTO.getIdShift())
+				.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
+
+		//2.ELIMINO LA RESERVA Y REESTABLEZCO LA VACANTE
+		if(reservation != null){
+		   reservationRepository.delete(reservation);
+		   courseSchedule.setVacancy(courseSchedule.getVacancy() + 1);
+		   shiftRepository.save(courseSchedule);
+		}
+		//3. REALIZO LA INSCRIPCION
+		InscripcionExitosaDTO inscripcionExitosaDTO = enrollUser(reservationDTO);
+		return inscripcionExitosaDTO;
+
+	}
+
     @Transactional
 	public InscripcionExitosaDTO enrollUser(ReservationDTO reservationDTO) {
+
 		// 1. BÚSQUEDA DE ENTIDADES
 		User user = userRepository.findById(reservationDTO.getIdUser())
 				.orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + reservationDTO.getIdUser()));
@@ -57,7 +127,7 @@ public class InscriptionService {
 					throw new IllegalArgumentException("El usuario ya está inscripto y activo en este curso.");
 				}
 			});
-		
+        
 		// 3. LÓGICA DE PROCESAMIENTO DE PAGO
 		if (reservationDTO.getMetodoDePago() == MetodoDePago.CREDIT_CARD || reservationDTO.getMetodoDePago() == MetodoDePago.DEBIT_CARD) {
 			double precioCurso = clase.getPrice();
@@ -115,7 +185,7 @@ public class InscriptionService {
 			System.err.println("Error al enviar email de confirmación para inscripción ID: " + savedInscripcion.getId() + " - " + e.getMessage());
 		}
 
-		// 7. DEVOLVER RESPUESTA
+		// 8. DEVOLVER RESPUESTA
 		return new InscripcionExitosaDTO(
 				savedInscripcion.getId(),
 				savedInscripcion.getShift().getClase().getName(),
@@ -124,6 +194,8 @@ public class InscriptionService {
 				savedInscripcion.getFechaInscripcion(),
 				savedInscripcion.getEstado()
 		);
+
+	
 	}
     
 

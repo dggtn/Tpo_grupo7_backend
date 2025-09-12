@@ -15,8 +15,8 @@ import com.example.g7_back_mobile.repositories.entities.User;
 @Repository
 public interface InscriptionRepository extends JpaRepository<Inscription, Long> {
     
-    List<Inscription> findByUser(User student);
-    List<Inscription> findByUserId(Long studentId);
+    List<Inscription> findByUser(User user);
+    List<Inscription> findByUserId(Long userId);
     List<Inscription> findByShift(Shift courseSchedule);
     List<Inscription> findShiftId(Long courseScheduleId);
     List<Inscription> findByEstado(String estado);
@@ -25,4 +25,5 @@ public interface InscriptionRepository extends JpaRepository<Inscription, Long> 
     Long countActiveByShift(@Param("shiftId") Long shiftId);
     Optional<Inscription> findByUserIdAndShiftIdAndEstado(Long userId, Long shiftId, String estado);
     List<Inscription> findByUserIdAndEstado(Long userId, String estado);
+
 }
