@@ -36,7 +36,7 @@ public class InscriptionService {
     private EmailService emailService;
 
 	@Transactional
-	public InscripcionExitosaDTO enrollWithReserve(ReservationDTO reservationDTO){
+	public InscripcionExitosaDTO enrollWithReservation(ReservationDTO reservationDTO){
 		// 1. EXISTE UNA RESERVA 
 		Reservation reservation = reservationRepository.findById(reservationDTO.getIdUser())
 				.orElseThrow(() -> new UserException("No se encontró un reserva para este usuario. Puede que haya expirado."));

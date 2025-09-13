@@ -1,5 +1,7 @@
 package com.example.g7_back_mobile.services;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,7 +54,54 @@ public class CourseService {
           } catch (Exception error) {
             throw new Exception("[Controlador.createCourse] -> " + error.getMessage());
           }
-        }
+    }
+
+	public void inicializarCursos() throws Exception {
+		try {
+
+			Course course1 = new Course(null, "Natación Adultos", null,
+					LocalDate.parse("2025-08-08"), // <-- CAMBIO AQUÍ
+					LocalDate.parse("2025-11-08"), // <-- CAMBIO AQUÍ
+					50,
+					50.0,
+					"imgA.jpg",
+					new ArrayList<>(),
+					new ArrayList<>(),
+					new ArrayList<>()
+			);
+
+			Course cours2 = new Course(null, "Karate", null,
+					LocalDate.parse("2025-07-18"), // <-- CAMBIO AQUÍ
+					LocalDate.parse("2025-08-18"), // <-- CAMBIO AQUÍ
+					50,
+					40.0,
+					"imgB.jpg",
+					new ArrayList<>(),
+					new ArrayList<>(),
+					new ArrayList<>()
+			);
+
+			Course course3 = new Course(null, "Pilates", null,
+				    LocalDate.parse("2025-07-11"), // <-- CAMBIO AQUÍ
+					LocalDate.parse("2025-08-11"), // <-- CAMBIO AQUÍ
+					50,
+					42.0,
+					"imgC.jpg",
+					new ArrayList<>(),
+					new ArrayList<>(),
+					new ArrayList<>()
+			);
+
+			courseRepository.save(course1);
+			courseRepository.save(cours2);
+			courseRepository.save(course3);
+
+		} catch (CourseException error) {
+			throw new CourseException(error.getMessage());
+		} catch (Exception error) {
+			throw new Exception("[Service.inicializarCursos] -> " + error.getMessage());
+		}
+	}
 
 	public Course updateCourse(Course course) throws Exception {
           try {

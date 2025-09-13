@@ -2,9 +2,6 @@ package com.example.g7_back_mobile.repositories.entities;
 
 import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -40,11 +36,9 @@ public class Shift {
     @ManyToOne
     @JoinColumn(name = "headquarter_id")
     private Headquarter sede;
-    @OneToOne(cascade = CascadeType.ALL)
+    @ManyToOne
     @JoinColumn(name = "teacher_id")
-    @JsonManagedReference
     private Teacher teacher;
-   
 
     public ShiftDTO toDTO() {
     return new ShiftDTO(

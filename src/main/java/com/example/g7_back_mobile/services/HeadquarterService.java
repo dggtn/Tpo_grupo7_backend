@@ -79,6 +79,24 @@ public class HeadquarterService {
           }
     }
 
+	public void inicializarSedes() throws Exception {
+		try{	
+            Headquarter headquarter1 = new Headquarter(null, "Caballito", "45678889003", "Rosario 789", "sedecaballitotl@gmail.com", "+5491130561833", null );
+            Headquarter headquarter2 = new Headquarter(null, "Devoto", "43445567880", "Chivilcoy 3700", "sededevototl@gmail.com", "+5491120443789", null);
+            Headquarter headquarter3 = new Headquarter(null, "Retiro","44293778034", "Pelegrini 1500", "sederetirotl@gmail.com", "+5491129387029", null);
+
+            headquarterRepository.save(headquarter1); 
+			headquarterRepository.save(headquarter2);
+			headquarterRepository.save(headquarter3);
+
+		 } catch (HeadquarterException error) {
+
+        	throw new HeadquarterException(error.getMessage());
+      } catch (Exception error) {
+				throw new Exception("[Service.inicializarSedes] -> " + error.getMessage());
+			}
+    }
+
 	public void cargarSede(Long sedeId, Long courseId){
 		Headquarter sedeSeleccionada = headquarterRepository.findById(sedeId).orElseThrow(() -> new HeadquarterException("La sede con id " + sedeId + " no existe."));
 		Course course = courseRepository.findById(courseId).orElseThrow(() -> new CourseException("Curso no encontrado"));

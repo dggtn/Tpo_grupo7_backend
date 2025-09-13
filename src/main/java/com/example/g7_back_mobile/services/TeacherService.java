@@ -57,6 +57,23 @@ public class TeacherService {
           }
         }
     
+    public void inicializarProfes() throws Exception {
+		try{	
+            Teacher teacher1 = new Teacher(null, "María Lopez");
+            Teacher teacher2 = new Teacher(null, "Hernan Satō");
+            Teacher teacher3 = new Teacher(null, "Laura Martinez");
+
+            teacherRepository.save(teacher1); 
+			teacherRepository.save(teacher2);
+			teacherRepository.save(teacher3);
+
+		 } catch (TeacherException error) {
+
+        	throw new TeacherException(error.getMessage());
+      } catch (Exception error) {
+				throw new Exception("[Service.inicializarProfes] -> " + error.getMessage());
+			}
+    }    
 
 	@Transactional
     public void deleteTeacher(Long id) throws Exception {
