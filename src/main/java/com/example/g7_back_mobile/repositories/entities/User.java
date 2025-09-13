@@ -43,7 +43,7 @@ public class User implements UserDetails{
     @Column
     private String address;
     @Column(columnDefinition = "LONGTEXT")
-    protected String urlAvatar;
+    private String urlAvatar;
 
     public UserDTO toDTO() {
         return new UserDTO(

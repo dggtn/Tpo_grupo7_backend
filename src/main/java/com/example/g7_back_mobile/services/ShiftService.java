@@ -1,7 +1,6 @@
 package com.example.g7_back_mobile.services;
 
 import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
-import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
 import com.example.g7_back_mobile.repositories.CourseRepository;
 import com.example.g7_back_mobile.repositories.HeadquarterRepository;
 import com.example.g7_back_mobile.repositories.ShiftRepository;
@@ -21,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ShiftService {
@@ -37,13 +35,6 @@ public class ShiftService {
 
     @Autowired
     private TeacherRepository teacherRepository;
-
-     public List<ShiftDTO> getAvailableShifts() {
-        List<Shift> shifts = shiftRepository.findAll();
-        return shifts.stream()
-                .map(Shift::toDTO)
-                .collect(Collectors.toList());
-    }
 
 
      public Shift updateShift(Shift shift) throws Exception {
@@ -61,17 +52,18 @@ public class ShiftService {
     }
 
     public Shift saveCronograma(long courseId, Long sedeId, Long teacherId, CreateShiftRequest request) throws Exception {
-		Course course = courseRepository.findById(courseId)
-			.orElseThrow(() -> new CourseException("Curso no encontrado con ID: " + courseId));
+      
+      Course course = courseRepository.findById(courseId)
+        .orElseThrow(() -> new CourseException("Curso no encontrado con ID: " + courseId));
 
-		Headquarter sede = headquarterRepository.findById(sedeId)
-			.orElseThrow(() -> new HeadquarterException("Sede no encontrada con ID: " + sedeId));
+      Headquarter sede = headquarterRepository.findById(sedeId)
+        .orElseThrow(() -> new HeadquarterException("Sede no encontrada con ID: " + sedeId));
 
-		if (!course.getSedes().contains(sede)) {
-			throw new Exception("La sede con ID " + sedeId + " no está asignada a este curso.");
-		}
+      if (!course.getSedes().contains(sede)) {
+        throw new Exception("La sede con ID " + sedeId + " no está asignada a este curso.");
+      }
 
-        Teacher teacher = teacherRepository.findById(teacherId)
+      Teacher teacher = teacherRepository.findById(teacherId)
 			.orElseThrow(() -> new TeacherException("Profesor no encontrada con ID: " + teacherId));
 
         if (!course.getTeachers().contains(teacher)) {
@@ -81,7 +73,7 @@ public class ShiftService {
 		Shift newSchedule = Shift.builder()
 				.clase(course)
 				.sede(sede)
-                .teacher(teacher)
+        .teacher(teacher)
 				.horaInicio(request.getHoraInicio())
 				.horaFin(request.getHoraFin())
 				.vacancy(request.getVacancy())
@@ -118,11 +110,13 @@ public class ShiftService {
           }
         }
 
-	public List<ShiftDTO> findSchedByCourse(Long courseId) {
-        return shiftRepository.findByClaseId(courseId)
-                .stream()
-                .map(Shift::toDTO)
-                .collect(Collectors.toList());
+	public List<Shift> findSchedByCourse(Long courseId) throws Exception {
+    try{
+        return shiftRepository.findByClaseId(courseId);
+      } catch(Exception error){
+        throw new Exception("[ShiftService.findSchedByCourse] -> " + error.getMessage());
+      }
+               
     	}
 
 }

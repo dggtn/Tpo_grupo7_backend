@@ -24,7 +24,7 @@ public class UserDTO {
     private Role role;
     private Integer age;
     private String address;
-    protected String urlAvatar;
+    private String urlAvatar;
 
     public User toEntity() {
         return new User(

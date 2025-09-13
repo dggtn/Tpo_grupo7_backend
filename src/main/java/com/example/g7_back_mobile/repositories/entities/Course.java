@@ -10,6 +10,7 @@ import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -18,6 +19,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,10 +36,15 @@ public class Course {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+    @ManyToOne
+    @JoinColumn(name = "sportName_id")
+    private Sport sportName;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
     private int length;
     private double price;
+    @Column(columnDefinition = "LONGTEXT")
+    private String imgCourse;
     @ManyToMany
     @JoinTable(
     name = "headquarter_course", 
@@ -50,10 +57,11 @@ public class Course {
     joinColumns = @JoinColumn(name = "course"), 
     inverseJoinColumns = @JoinColumn(name = "teacher_id"))
     private List<Teacher> teachers; //profesores que dictan la clase
-    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "clase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     @JsonManagedReference
     private List<Shift> shifts = new ArrayList<>();//turnos disponibles de la clase
+  
 
     public CourseDTO toDTO(){
         List<ShiftDTO> shiftDTO = this.shifts
@@ -63,13 +71,16 @@ public class Course {
         return new CourseDTO(
             this.id,
             this.name,
+            this.sportName,
             this.fechaInicio.toString(),
             this.fechaFin.toString(),
             this.length,
             this.price,
+            this.imgCourse,
             this.sedes,
             this.teachers,
-            shiftDTO
+            shiftDTO 
+            
         );
     }
 }

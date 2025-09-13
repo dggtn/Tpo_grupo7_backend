@@ -1,6 +1,10 @@
 package com.example.g7_back_mobile.controllers.dtos;
 
+import java.time.LocalDateTime;
+
+import com.example.g7_back_mobile.repositories.entities.Inscription;
 import com.example.g7_back_mobile.repositories.entities.MetodoDePago;
+import com.example.g7_back_mobile.repositories.entities.Reservation;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,4 +18,16 @@ public class ReservationDTO {
     private Long idUser;
     private Long idShift;
     private MetodoDePago metodoDePago;
+    private LocalDateTime expiryDate;
+
+    public Reservation toEntity(){
+        return new Reservation(
+          
+            this.idUser,
+            this.idShift,
+            this.metodoDePago,
+            this.expiryDate
+            
+        );
+    }
 }

@@ -1,9 +1,12 @@
 package com.example.g7_back_mobile.controllers;
 
 import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
+import com.example.g7_back_mobile.repositories.entities.Course;
 import com.example.g7_back_mobile.repositories.entities.Shift;
+import com.example.g7_back_mobile.services.CourseService;
 import com.example.g7_back_mobile.services.ShiftService;
 import com.example.g7_back_mobile.services.exceptions.ShiftException;
+import com.example.g7_back_mobile.services.exceptions.UserException;
 import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
 import com.example.g7_back_mobile.controllers.dtos.ResponseData;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,19 +22,8 @@ public class ShiftsController {
 
     @Autowired
     private ShiftService shiftService;
-
-    @GetMapping("/available")
-    public ResponseEntity<ResponseData<?>> getAvailableShifts() {
-        try {
-            List<ShiftDTO> availableShifts = shiftService.getAvailableShifts();
-            return ResponseEntity.status(HttpStatus.OK)
-                    .body(ResponseData.success(availableShifts));
-        } catch (Exception error) {
-            System.out.printf("[ShiftsController.getAvailableShifts] -> %s", error.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ResponseData.error("No se pudieron obtener los turnos disponibles"));
-        }
-    }
+    @Autowired
+    private CourseService courseService;
 
     @PostMapping("/CourseSchedule/{courseId}/{sedeId}")
     public ResponseEntity<?> createCourseSchedule(
@@ -61,12 +53,22 @@ public class ShiftsController {
     }
 
     @GetMapping("/by-course/{courseId}")
-    public ResponseEntity<List<ShiftDTO>> getSchedulesByCourse(@PathVariable("courseId") Long courseId) {
+    public ResponseEntity<ResponseData<?>> getCourseShifts(@PathVariable Long courseId) {
         try {
-            List<ShiftDTO> schedules = shiftService.findSchedByCourse(courseId);
-            return ResponseEntity.ok(schedules);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+
+        Course clase = courseService.getCourseById(courseId);
+
+        List<ShiftDTO> shifts = shiftService.findSchedByCourse(clase.getId()).stream().map(Shift::toDTO).toList();
+
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(shifts));
+
+        } catch (UserException error) {
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ResponseData.error(error.getMessage()));
+
+        } catch (Exception error) {
+        System.out.printf("[ShiftController.getCourseShifts] -> %s", error.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ResponseData.error("No se pudieron obtener las compras."));
         }
     }
 

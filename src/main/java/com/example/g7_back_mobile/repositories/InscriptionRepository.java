@@ -17,8 +17,8 @@ public interface InscriptionRepository extends JpaRepository<Inscription, Long> 
     
     List<Inscription> findByUser(User user);
     List<Inscription> findByUserId(Long userId);
-    List<Inscription> findByShift(Shift courseSchedule);
-    List<Inscription> findShiftId(Long courseScheduleId);
+    List<Inscription> findByShift(Shift shift);
+    List<Inscription> findByShiftId(Long shiftId);
     List<Inscription> findByEstado(String estado);
     Optional<Inscription> findByUserAndShift(User user, Shift shift);
     @Query("SELECT COUNT(i) FROM Inscription i WHERE i.shift.id = :shiftId AND i.estado = 'ACTIVA'")
