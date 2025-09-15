@@ -27,14 +27,14 @@ public class HeadquarterController {
     private HeadquarterService headquarterService;
 
     @GetMapping("/allHeadquarters")
-    public ResponseEntity<?> obtenerTodosLasSedes() {
+    public ResponseEntity<ResponseData<?>> obtenerTodosLasSedes() {
         try {
             List<Headquarter> sedes = headquarterService.todosLasSedes();
-            return ResponseEntity.ok(sedes);
+            return ResponseEntity.ok(ResponseData.success(sedes));
         } catch (HeadquarterException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Error inesperado: " + e.getMessage()));
         }
     }
 

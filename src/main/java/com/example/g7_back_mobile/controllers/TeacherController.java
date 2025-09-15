@@ -28,14 +28,14 @@ public class TeacherController {
     private TeacherService teacherService;
 
     @GetMapping("/allTeacherss")
-    public ResponseEntity<?> obtenerTodosLosProfes() {
+    public ResponseEntity<ResponseData<?>> obtenerTodosLosProfes() {
         try {
             List<Teacher> profes = teacherService.todosLosProfes();
-            return ResponseEntity.ok(profes);
+            return ResponseEntity.ok(ResponseData.success(profes));
         } catch (TeacherException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Error inesperado: " + e.getMessage()));
         }
     }
 

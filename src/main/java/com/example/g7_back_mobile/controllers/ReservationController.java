@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -47,6 +49,19 @@ public class ReservationController {
         }
     }
 
-    
+    @PostMapping("/reservar")
+    public ResponseEntity<ResponseData<?>> reserveCourse(@RequestBody ReservationDTO reservationDTO) {
+        try {
+
+            reservationService.reserveClass(reservationDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success("Curso reservado!"));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Ocurrió un error inesperado al reservar el curso."));
+        }
+    }
+
+
         
 }

@@ -34,28 +34,28 @@ public class InscriptionController {
     private UserService userService;
     
     @PostMapping("/inscribir")
-    public ResponseEntity<?> enrollUser(@RequestBody ReservationDTO reservationDTO) {
+    public ResponseEntity<ResponseData<?>> enrollUser(@RequestBody ReservationDTO reservationDTO) {
         try {
 
             InscripcionExitosaDTO resultado = inscriptionService.enrollUser(reservationDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
+            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success(resultado));
         } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Ocurrió un error inesperado al inscribir.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Ocurrió un error inesperado al inscribir."));
         }
     }
 
     @PostMapping("/inscribir_reserva")
-    public ResponseEntity<?> enrollWithReservation(@RequestBody ReservationDTO reservationDTO) {
+    public ResponseEntity<ResponseData<?>> enrollWithReservation(@RequestBody ReservationDTO reservationDTO) {
         try {
 
             InscripcionExitosaDTO resultado = inscriptionService.enrollWithReservation(reservationDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
+            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success(resultado));
         } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Ocurrió un error inesperado al inscribir.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Ocurrió un error inesperado al inscribir."));
         }
     }
 

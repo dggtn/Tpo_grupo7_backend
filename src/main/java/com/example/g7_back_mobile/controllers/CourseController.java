@@ -30,14 +30,14 @@ public class CourseController {
     
 
     @GetMapping("/allCourses")
-    public ResponseEntity<?> obtenerTodosLosCursos() {
+    public ResponseEntity<ResponseData<?>> obtenerTodosLosCursos() {
         try {
             List<Course> cursos = courseService.todosLosCursos();
-            return ResponseEntity.ok(cursos);
+            return ResponseEntity.ok(ResponseData.success(cursos));
         } catch (CourseException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Error inesperado: " + e.getMessage()));
         }
     }
    
@@ -109,16 +109,16 @@ public class CourseController {
     }
 
     @GetMapping("/buscar")
-    public ResponseEntity<List<CourseDTO>> searchCoursesByName(@RequestParam String nombre) {
+    public ResponseEntity<ResponseData<List<CourseDTO>>> searchCoursesByName(@RequestParam String nombre) {
         List<CourseDTO> cursos = courseService.findCoursesByName(nombre);
-        return ResponseEntity.ok(cursos);
+        return ResponseEntity.ok(ResponseData.success(cursos));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CourseDTO> getCourseDetails(@PathVariable Long id) {
+    public ResponseEntity<ResponseData<CourseDTO>> getCourseDetails(@PathVariable Long id) {
         try {
             CourseDTO courseView = courseService.getCourseDTOById(id);
-            return ResponseEntity.ok(courseView);
+            return ResponseEntity.ok(ResponseData.success(courseView));
         } catch (Exception e) {
             // Si no se encuentra el curso, devolvemos un 404 Not Found
             return ResponseEntity.notFound().build();

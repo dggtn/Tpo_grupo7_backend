@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import java.io.ByteArrayOutputStream;
 import com.example.g7_back_mobile.controllers.dtos.AsistenciaDTO;
 import com.example.g7_back_mobile.controllers.dtos.AsistenciaResultadoDTO;
+import com.example.g7_back_mobile.controllers.dtos.ResponseData;
 import com.example.g7_back_mobile.services.CourseAttendService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -30,28 +31,28 @@ public class CourseAttendController {
     private CourseAttendService courseAttendService;
 
     @PostMapping("/registrar_asistencia")
-    public ResponseEntity<?> registrarAsistencia(@RequestBody AsistenciaDTO asistenciaDTO) {
+    public ResponseEntity<ResponseData<?>> registrarAsistencia(@RequestBody AsistenciaDTO asistenciaDTO) {
         try {
             // Llamamos a un método en el controlador que crearemos ahora
             courseAttendService.registrarAsistencia(asistenciaDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Asistencia registrada con éxito.");
+            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success("Asistencia registrada con éxito."));
         } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
         }
     }
 
     @GetMapping("/inscripcion/{id}/resultado")
-    public ResponseEntity<?> getResultadoAsistencia(@PathVariable Long id) {
+    public ResponseEntity<ResponseData<?>> getResultadoAsistencia(@PathVariable Long id) {
         try {
             AsistenciaResultadoDTO resultado = courseAttendService.verificarAsistencia(id);
-            return ResponseEntity.ok(resultado);
+            return ResponseEntity.ok(ResponseData.success(resultado));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
         }
     }
 
     @GetMapping(value = "/qr/{shiftId}", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<byte[]> generateQrCode(@PathVariable Long shiftId) {
+    public ResponseEntity<ResponseData<byte[]>> generateQrCode(@PathVariable Long shiftId) {
         try {
             String qrContent = String.valueOf(shiftId);
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
@@ -61,7 +62,7 @@ public class CourseAttendController {
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
             byte[] pngData = pngOutputStream.toByteArray();
 
-            return ResponseEntity.ok(pngData);
+            return ResponseEntity.ok(ResponseData.success(pngData));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

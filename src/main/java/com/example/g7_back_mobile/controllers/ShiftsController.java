@@ -26,16 +26,16 @@ public class ShiftsController {
     private CourseService courseService;
 
     @PostMapping("/CourseSchedule/{courseId}/{sedeId}")
-    public ResponseEntity<?> createCourseSchedule(
+    public ResponseEntity<ResponseData<?>> createCourseSchedule(
             @PathVariable Long courseId,
             @PathVariable Long sedeId,
             @PathVariable Long teacherId,
             @RequestBody CreateShiftRequest request) {
         try {
             Shift newSchedule = shiftService.saveCronograma(courseId, sedeId, teacherId, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(newSchedule);
+            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success(newSchedule));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
         }
     }
 
