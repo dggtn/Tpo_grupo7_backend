@@ -6,15 +6,16 @@
  4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/{courseId} 
  5. Agignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
  6. Crear cronogramas/"shifts" (los que quiera segun profes y sedes ya asignados) para un curso: [POST] http://localhost:8080/shifts/shift/{courseId}/{sedeId}/{teacherId} - JSON-BODY:
-        {
+
+       {
             "horaInicio":"16:30", 
             "horaFin":"18:20",
             "vacancy":12,
             "diaEnQueSeDicta":3
         }
 
- 7. Iniciar y finalizar registro, luego autenticarse.
- 8. 
+ 8. Iniciar y finalizar registro, luego autenticarse.
+ 9. 
 
  
  # # Para hacer correr el backend con MySQL:
