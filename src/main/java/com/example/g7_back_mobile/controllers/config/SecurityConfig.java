@@ -60,11 +60,35 @@ public class SecurityConfig {
 	@Bean
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration corsConfig = new CorsConfiguration();
-		corsConfig.setAllowedOrigins(List.of("*"));
+		// Permitir orígenes específicos para desarrollo
+    	corsConfig.setAllowedOrigins(List.of(
+			"http://10.0.2.2:8080",     // Emulador Android
+			"http://localhost:8080",     // Desarrollo local
+			"http://127.0.0.1:8080",     // Loopback
+			"http://192.168.*",          // Red local (wildcard)
+			"*"                          // Fallback para desarrollo
+    	));
+    
+    	// O usar setAllowedOriginPatterns para más flexibilidad
+    	// corsConfig.setAllowedOriginPatterns(List.of("*"));
 		corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-		corsConfig.setAllowCredentials(false);
-		corsConfig.addAllowedHeader("*");
-
+		corsConfig.setAllowCredentials(true);
+		corsConfig.setAllowedHeaders(List.of(
+			"*",
+			"Authorization",
+			"Content-Type",
+			"X-Requested-With",
+			"Accept",
+			"Origin",
+			"Access-Control-Request-Method",
+			"Access-Control-Request-Headers"
+    	));
+		corsConfig.setExposedHeaders(List.of(
+			"Access-Control-Allow-Origin",
+			"Access-Control-Allow-Credentials"
+		));
+		// Tiempo de cache para preflight requests
+    	corsConfig.setMaxAge(3600L);
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", corsConfig);
 		return source;

@@ -19,8 +19,8 @@ public class UserDTO {
     private String lastName;
     @NotNull
     private String email;
-    private String password;
     @NotNull
+    private String password;
     private Role role;
     private Integer age;
     private String address;
