@@ -2,7 +2,6 @@ package com.example.g7_back_mobile.controllers.dtos;
 
 import java.time.LocalDateTime;
 
-import com.example.g7_back_mobile.repositories.entities.Inscription;
 import com.example.g7_back_mobile.repositories.entities.MetodoDePago;
 import com.example.g7_back_mobile.repositories.entities.Reservation;
 
