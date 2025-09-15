@@ -62,17 +62,18 @@ public class InscriptionController {
     @GetMapping("/by-user")
     public ResponseEntity<ResponseData<?>> getInscriptionsByUser(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            User authUser = userService.getUserByUsername(userDetails.getUsername());
-            List<InscriptionDTO> inscriptions = inscriptionService.getUserInscriptions(authUser.getId()).stream().map(Inscription::toDTO).toList();
+            // CAMBIO: Usar getUserByEmail en lugar de getUserByUsername
+            User authUser = userService.getUserByEmail(userDetails.getUsername());
+            List<InscriptionDTO> inscriptions = inscriptionService.getUserInscriptions(authUser.getId())
+                    .stream().map(Inscription::toDTO).toList();
             
             return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(inscriptions));
         } catch (UserException error) {
-        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ResponseData.error(error.getMessage()));
-
+            return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ResponseData.error(error.getMessage()));
         } catch (Exception error) {
-        System.out.printf("[InscriptionController.getInscriptionsByUser] -> %s", error.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ResponseData.error("No se pudieron obtener las inscripciones."));
+            System.out.printf("[InscriptionController.getInscriptionsByUser] -> %s", error.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("No se pudieron obtener las inscripciones."));
         }
     }
 }

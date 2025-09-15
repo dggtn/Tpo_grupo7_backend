@@ -33,19 +33,20 @@ public class ReservationController {
     @GetMapping("")
     public ResponseEntity<ResponseData<?>> getUserReservations(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-        User authUser = userService.getUserByUsername(userDetails.getUsername());
+            // CAMBIO: Usar getUserByEmail en lugar de getUserByUsername
+            User authUser = userService.getUserByEmail(userDetails.getUsername());
 
-        List<ReservationDTO> reservations = reservationService.getUserReservations(authUser.getId()).stream().map(Reservation::toDTO).toList();
+            List<ReservationDTO> reservations = reservationService.getUserReservations(authUser.getId())
+                    .stream().map(Reservation::toDTO).toList();
 
-        return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(reservations));
+            return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(reservations));
 
         } catch (UserException error) {
-        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ResponseData.error(error.getMessage()));
-
+            return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ResponseData.error(error.getMessage()));
         } catch (Exception error) {
-        System.out.printf("[ReservationController.getUserReservations] -> %s", error.getMessage());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(ResponseData.error("No se pudieron obtener las reservas."));
+            System.out.printf("[ReservationController.getUserReservations] -> %s", error.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("No se pudieron obtener las reservas."));
         }
     }
 

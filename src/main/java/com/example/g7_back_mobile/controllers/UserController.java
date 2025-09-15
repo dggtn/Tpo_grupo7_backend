@@ -29,31 +29,28 @@ public class UserController {
     @PutMapping("/update")
     public ResponseEntity<ResponseData<?>> updateUser(@AuthenticationPrincipal UserDetails userDetails, @RequestBody UserDTO userDTO) {
         try {
-            User authUser = userService.getUserByUsername(userDetails.getUsername());
+            // CAMBIO: Usar getUserByEmail en lugar de getUserByUsername
+            User authUser = userService.getUserByEmail(userDetails.getUsername());
 
             User user = userDTO.toEntity();
-
             authUser.updateData(user);
 
             String password = user.getPassword();
-
             if(!password.equals("null")) authUser.setPassword(passwordEncoder.encode(password));
 
-                User updatedUser = userService.updateUser(authUser);
+            User updatedUser = userService.updateUser(authUser);
+            UserDTO updatedUserDTO = updatedUser.toDTO();
 
-                UserDTO updatedUserDTO = updatedUser.toDTO();
+            return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(updatedUserDTO));
 
-                return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(updatedUserDTO));
-
-            }catch (UserException error) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseData.error(error.getMessage()));
-
-            } catch (Exception error) {
-                System.out.printf("[UserController.updateUser] -> %s", error.getMessage() );
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("No se pudo actualizar el usuario"));
+        } catch (UserException error) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseData.error(error.getMessage()));
+        } catch (Exception error) {
+            System.out.printf("[UserController.updateUser] -> %s", error.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseData.error("No se pudo actualizar el usuario"));
         }
     }
-
     @GetMapping
     public ResponseEntity<ResponseData<?>> getAllUsers() {
         try {

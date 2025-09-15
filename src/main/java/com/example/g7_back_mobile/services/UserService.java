@@ -19,8 +19,18 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    public User getUserByEmail(String email) throws Exception {
+        try {
+            return userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserException("Usuario no encontrado"));
+        } catch (UserException error) {
+            throw new UserException(error.getMessage());
+        } catch (Exception error) {
+            throw new Exception("[UserService.getUserByEmail] -> " + error.getMessage());
+        }
+    }
 
-     public User getUserByUsername(String username) throws Exception {
+    public User getUserByUsername(String username) throws Exception {
         try {
           return userRepository.findByUsername(username).orElseThrow(() -> new UserException("Usuario no encontrado"));
         } catch (UserException error) {
