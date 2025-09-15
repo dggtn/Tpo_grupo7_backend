@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.example.g7_back_mobile.controllers.dtos.CourseDTO;
 import com.example.g7_back_mobile.repositories.CourseRepository;
 import com.example.g7_back_mobile.repositories.entities.Course;
+import com.example.g7_back_mobile.repositories.entities.Sport;
 import com.example.g7_back_mobile.services.exceptions.CourseException;
 
 import jakarta.transaction.Transactional;
@@ -19,6 +20,9 @@ public class CourseService {
 
     @Autowired
     private CourseRepository courseRepository;
+
+	@Autowired
+	private SportService sportService;
 
     public List<Course> todosLosCursos() throws CourseException {
 			List<Course> cursos = courseRepository.findAll();
@@ -59,9 +63,9 @@ public class CourseService {
 	public void inicializarCursos() throws Exception {
 		try {
 
-			Course course1 = new Course(null, "Natación Adultos", null,
-					LocalDate.parse("2025-08-08"), // <-- CAMBIO AQUÍ
-					LocalDate.parse("2025-11-08"), // <-- CAMBIO AQUÍ
+			Course course1 = new Course(null, "Natación Adultos", sportService.createSport(new Sport(null, "Natación")),
+					LocalDate.parse("2025-08-08"), 
+					LocalDate.parse("2025-11-08"), 
 					50,
 					50.0,
 					"imgA.jpg",
@@ -70,9 +74,9 @@ public class CourseService {
 					new ArrayList<>()
 			);
 
-			Course cours2 = new Course(null, "Karate", null,
-					LocalDate.parse("2025-07-18"), // <-- CAMBIO AQUÍ
-					LocalDate.parse("2025-08-18"), // <-- CAMBIO AQUÍ
+			Course cours2 = new Course(null, "Karate", sportService.createSport(new Sport(null, "Artes Marciales")),
+					LocalDate.parse("2025-07-18"), 
+					LocalDate.parse("2025-08-18"), 
 					50,
 					40.0,
 					"imgB.jpg",
@@ -81,9 +85,9 @@ public class CourseService {
 					new ArrayList<>()
 			);
 
-			Course course3 = new Course(null, "Pilates", null,
-				    LocalDate.parse("2025-07-11"), // <-- CAMBIO AQUÍ
-					LocalDate.parse("2025-08-11"), // <-- CAMBIO AQUÍ
+			Course course3 = new Course(null, "Pilates", sportService.createSport(new Sport(null, "Gimnacia")),
+				    LocalDate.parse("2025-07-11"), 
+					LocalDate.parse("2025-08-11"), 
 					50,
 					42.0,
 					"imgC.jpg",

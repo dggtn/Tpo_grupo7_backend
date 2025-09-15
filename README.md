@@ -1,3 +1,10 @@
+ # # Endpoints en orden de prioridad segun lógica de relaciones:
+
+ 1. Crear una lista de sedes: [POST] http://localhost:8080/headquarters/initializeHeadquarters
+ 2. Crear una lista de maestros: [POST] http://localhost:8080/teachers/initializeTeachers 
+ 3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses 
+ 
+ 
  # # Para hacer correr el backend con MySQL:
  
  a) Crear una scheme con el nombre mobile_back (tal como esta escrito en el archivo application.properties en la carpeta de rsources dentro de la carpeta main)

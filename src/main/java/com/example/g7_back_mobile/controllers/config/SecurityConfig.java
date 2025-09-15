@@ -38,17 +38,23 @@ public class SecurityConfig {
 					.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                     .csrf(AbstractHttpConfigurer::disable)
                     .authorizeHttpRequests(req -> req
+							
 							//h2-console
 							.requestMatchers("/h2-console/**").permitAll()
+							
 							// Swagger
 							.requestMatchers("/swagger-ui/**").permitAll()
 							.requestMatchers("/v3/api-docs/**").permitAll()
+							
 							//Auth - endpoints públicos
                             .requestMatchers("/auth/iniciar-registro", "/auth/finalizar-registro", "/auth/authenticate").permitAll()
-                            // Auth - logout requiere autenticación
+                            
+							// Auth - logout requiere autenticación
                             .requestMatchers("/auth/logout").authenticated()
-                            // User
+                            
+							// User
                             .requestMatchers("/users/**").authenticated()
+							
 							// Rutas públicas para cargar datos por default y acceder a ellos
                         	.requestMatchers(HttpMethod.POST, "/headquarters/initializeHeadquarters").permitAll()
 							.requestMatchers(HttpMethod.GET, "/headquarters/**").permitAll()
@@ -58,6 +64,7 @@ public class SecurityConfig {
 							.requestMatchers(HttpMethod.GET, "/sports/**").permitAll()
 							.requestMatchers(HttpMethod.POST, "/courses/initializeCourses").permitAll()
 							.requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
+							
 							// Accesos publicos en general
 							.requestMatchers(HttpMethod.GET, "/reservations/**").permitAll()
 							.requestMatchers(HttpMethod.GET, "/shifts/**").permitAll()
@@ -66,6 +73,7 @@ public class SecurityConfig {
 
                             // Default
                             .anyRequest().authenticated())
+
                     .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                     .authenticationProvider(authenticationProvider)
                     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -73,7 +81,7 @@ public class SecurityConfig {
                 return http.build();
         }
         
-        // Configuracion de CORS
+    // Configuracion de CORS
 	@Bean
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration corsConfig = new CorsConfiguration();
