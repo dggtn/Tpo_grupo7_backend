@@ -34,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final String username;
+        final String userEmail; // Cambié el nombre para ser más claro
         
         // Si no hay header Authorization o no empieza con "Bearer ", continuar sin autenticar
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -44,10 +44,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         try {
             jwt = authHeader.substring(7);
-            username = jwtService.extractUsername(jwt);
+            userEmail = jwtService.extractUsername(jwt); // Esto extrae el email
             
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+            // Debug logging
+            System.out.println("[JwtAuthenticationFilter] Extracted email from token: " + userEmail);
+            
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                
+                // Debug logging
+                System.out.println("[JwtAuthenticationFilter] Loaded user: " + userDetails.getUsername());
+                System.out.println("[JwtAuthenticationFilter] User authorities: " + userDetails.getAuthorities());
                 
                 if (jwtService.isTokenValid(jwt, userDetails) && !jwtService.isTokenExpired(jwt)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -56,14 +63,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    
+                    // Debug logging
+                    System.out.println("[JwtAuthenticationFilter] Authentication set successfully for: " + userEmail);
+                } else {
+                    System.err.println("[JwtAuthenticationFilter] Token validation failed for: " + userEmail);
                 }
             }
         } catch (Exception error) {
-            // Solo loggear el error, NO interrumpir la cadena de filtros
             System.err.println("[JwtAuthenticationFilter] Error processing token: " + error.getMessage());
-            // Limpiar el contexto en caso de error
+            error.printStackTrace(); // Para debug más detallado
             SecurityContextHolder.clearContext();
-            // NO hacer return aquí - dejar que continúe la cadena de filtros
         }
 
         // SIEMPRE continuar con la cadena de filtros

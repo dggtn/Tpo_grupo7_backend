@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -15,8 +14,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import com.example.g7_back_mobile.repositories.entities.Role;
 
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -76,16 +73,23 @@ public class SecurityConfig {
                     .authenticationProvider(authenticationProvider)
                     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
-					// Agregar logging para debug
+					// Logging detallado para debug
 					.exceptionHandling(ex -> ex
 						.authenticationEntryPoint((request, response, authException) -> {
-							System.err.println("[Security] Authentication failed for: " + request.getRequestURI() + 
-											" - " + authException.getMessage());
+							System.err.println("[Security] AUTHENTICATION FAILED for URI: " + request.getRequestURI());
+							System.err.println("[Security] Method: " + request.getMethod());
+							System.err.println("[Security] Remote Address: " + request.getRemoteAddr());
+							System.err.println("[Security] Authorization Header: " + request.getHeader("Authorization"));
+							System.err.println("[Security] Exception: " + authException.getMessage());
+							System.err.println("[Security] Exception Type: " + authException.getClass().getSimpleName());
+							authException.printStackTrace();
 							response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required");
 						})
 						.accessDeniedHandler((request, response, accessDeniedException) -> {
-							System.err.println("[Security] Access denied for: " + request.getRequestURI() + 
-											" - " + accessDeniedException.getMessage());
+							System.err.println("[Security] ACCESS DENIED for URI: " + request.getRequestURI());
+							System.err.println("[Security] User: " + (request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "null"));
+							System.err.println("[Security] Exception: " + accessDeniedException.getMessage());
+							accessDeniedException.printStackTrace();
 							response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
 						})
 					);
@@ -128,5 +132,4 @@ public class SecurityConfig {
 		source.registerCorsConfiguration("/**", corsConfig);
 		return source;
 	}
-
 }
