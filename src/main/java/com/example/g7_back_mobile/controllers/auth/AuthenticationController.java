@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -74,7 +76,27 @@ public class AuthenticationController {
                 .body(ResponseData.error("Usuario o contraseña inválido."));
         }
     }
-  }
 
-
-
+  @Operation(summary = "Cerrar sesión", description = "Permite cerrar la sesión del usuario autenticado")
+  @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Logout exitoso"),
+            @ApiResponse(responseCode = "401", description = "Usuario no autenticado")
+    })
+  @PostMapping("/logout")
+    public ResponseEntity<ResponseData<String>> logout(
+        @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            // Con JWT stateless, el logout se maneja principalmente en el cliente
+            // El servidor puede realizar acciones como logging, limpiar caché, etc.
+            String username = userDetails != null ? userDetails.getUsername() : "Usuario desconocido";
+            System.out.printf("[AuthenticationController.logout] -> Usuario %s ha cerrado sesión%n", username);
+            
+            return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.success("Sesión cerrada exitosamente"));
+        } catch (Exception error) {
+            System.out.printf("[AuthenticationController.logout] -> %s", error.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al cerrar sesión"));
+        }
+    }
+}
