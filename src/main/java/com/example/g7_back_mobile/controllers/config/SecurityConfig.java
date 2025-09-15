@@ -62,10 +62,10 @@ public class SecurityConfig {
 							.requestMatchers("/courses/**").permitAll()
 							.requestMatchers("/shifts/**").permitAll()
 							
-							// Accesos publicos en general
-							.requestMatchers(HttpMethod.GET, "/reservations/**").permitAll()
-							.requestMatchers(HttpMethod.GET, "/inscriptions/**").permitAll()
-							.requestMatchers(HttpMethod.GET, "/asistencias/**").permitAll()
+							 // INSCRIPCIONES, RESERVAS y ASISTENCIAS REQUIEREN AUTENTICACIÓN
+							.requestMatchers("/inscriptions/**").authenticated()
+							.requestMatchers("/reservations/**").authenticated()
+							.requestMatchers("/asistencias/**").authenticated()
 
                             // Default
                             .anyRequest().authenticated()

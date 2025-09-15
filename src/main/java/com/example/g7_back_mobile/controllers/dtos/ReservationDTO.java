@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReservationDTO {
-   
+    private Long id;
     private Long idUser;
     private Long idShift;
     private MetodoDePago metodoDePago;
@@ -22,7 +22,7 @@ public class ReservationDTO {
 
     public Reservation toEntity(){
         return new Reservation(
-          
+            this.id,
             this.idUser,
             this.idShift,
             this.metodoDePago,

@@ -37,9 +37,13 @@ public class InscriptionService {
 
 	@Transactional
 	public InscripcionExitosaDTO enrollWithReservation(ReservationDTO reservationDTO){
-		// 1. EXISTE UNA RESERVA 
-		Reservation reservation = reservationRepository.findById(reservationDTO.getIdUser())
-				.orElseThrow(() -> new UserException("No se encontró un reserva para este usuario. Puede que haya expirado."));
+		// 1. BUSCAR LA RESERVA CORRECTA - Por usuario Y turno
+		List<Reservation> userReservations = reservationRepository.findByIdUser(reservationDTO.getIdUser());
+		
+		Reservation reservation = userReservations.stream()
+			.filter(r -> r.getIdShift().equals(reservationDTO.getIdShift()))
+			.findFirst()
+			.orElseThrow(() -> new UserException("No se encontró una reserva para este usuario y turno. Puede que haya expirado."));
 
 		if(reservation.getExpiryDate().isBefore(LocalDateTime.now())){
 			reservationRepository.delete(reservation);
@@ -47,19 +51,17 @@ public class InscriptionService {
 		}
 
 		Shift courseSchedule = shiftRepository.findById(reservationDTO.getIdShift())
-				.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
+			.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
 
 		//2.ELIMINO LA RESERVA Y REESTABLEZCO LA VACANTE
-		if(reservation != null){
-		   reservationRepository.delete(reservation);
-		   courseSchedule.setVacancy(courseSchedule.getVacancy() + 1);
-		   shiftRepository.save(courseSchedule);
-		}
+		reservationRepository.delete(reservation);
+		courseSchedule.setVacancy(courseSchedule.getVacancy() + 1);
+		shiftRepository.save(courseSchedule);
+		
 		//3. REALIZO LA INSCRIPCION
 		InscripcionExitosaDTO inscripcionExitosaDTO = enrollUser(reservationDTO);
 		return inscripcionExitosaDTO;
-
-	}
+    }
 
     @Transactional
 	public InscripcionExitosaDTO enrollUser(ReservationDTO reservationDTO) {

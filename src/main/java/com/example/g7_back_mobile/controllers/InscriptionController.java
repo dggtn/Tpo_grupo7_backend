@@ -59,7 +59,7 @@ public class InscriptionController {
         }
     }
 
-    @GetMapping("/by-user/{userId}")
+    @GetMapping("/by-user")
     public ResponseEntity<ResponseData<?>> getInscriptionsByUser(@AuthenticationPrincipal UserDetails userDetails) {
         try {
             User authUser = userService.getUserByUsername(userDetails.getUsername());
