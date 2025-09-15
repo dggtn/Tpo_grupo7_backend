@@ -49,6 +49,15 @@ public class SecurityConfig {
                             .requestMatchers("/auth/logout").authenticated()
                             // User
                             .requestMatchers("/users/**").authenticated()
+							// Rutas públicas para cargar datos por default y acceder a ellos
+                        	.requestMatchers(HttpMethod.POST, "/headquarters/initializeHeadquarters").permitAll()
+							.requestMatchers(HttpMethod.GET, "/headquarters/**").permitAll()
+                        	.requestMatchers(HttpMethod.POST, "/teachers/initializeTeachers").permitAll()
+							.requestMatchers(HttpMethod.GET, "/teachers/**").permitAll()
+							.requestMatchers(HttpMethod.POST, "/sports/initializeSports").permitAll()
+							.requestMatchers(HttpMethod.GET, "/sports/**").permitAll()
+							.requestMatchers(HttpMethod.POST, "/courses/initializeCourses").permitAll()
+							.requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
 
                             // Default
                             .anyRequest().authenticated())
