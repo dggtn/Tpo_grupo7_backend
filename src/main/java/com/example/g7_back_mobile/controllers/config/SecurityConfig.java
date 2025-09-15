@@ -18,6 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.example.g7_back_mobile.repositories.entities.Role;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -73,8 +74,21 @@ public class SecurityConfig {
 
                     .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                     .authenticationProvider(authenticationProvider)
-                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
+					// Agregar logging para debug
+					.exceptionHandling(ex -> ex
+						.authenticationEntryPoint((request, response, authException) -> {
+							System.err.println("[Security] Authentication failed for: " + request.getRequestURI() + 
+											" - " + authException.getMessage());
+							response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required");
+						})
+						.accessDeniedHandler((request, response, accessDeniedException) -> {
+							System.err.println("[Security] Access denied for: " + request.getRequestURI() + 
+											" - " + accessDeniedException.getMessage());
+							response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+						})
+					);
                 return http.build();
         }
         
@@ -87,8 +101,7 @@ public class SecurityConfig {
 			"http://10.0.2.2:8080",     // Emulador Android
 			"http://localhost:8080",     // Desarrollo local
 			"http://127.0.0.1:8080",     // Loopback
-			"http://192.168.*",          // Red local (wildcard)
-			"*"                          // Fallback para desarrollo
+			"http://192.168.*"          // Red local (wildcard)
     	));
     
     	// O usar setAllowedOriginPatterns para más flexibilidad
@@ -96,7 +109,7 @@ public class SecurityConfig {
 		corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		corsConfig.setAllowCredentials(true);
 		corsConfig.setAllowedHeaders(List.of(
-			"*",
+			//"*",
 			"Authorization",
 			"Content-Type",
 			"X-Requested-With",
