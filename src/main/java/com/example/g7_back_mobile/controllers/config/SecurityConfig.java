@@ -58,6 +58,11 @@ public class SecurityConfig {
 							.requestMatchers(HttpMethod.GET, "/sports/**").permitAll()
 							.requestMatchers(HttpMethod.POST, "/courses/initializeCourses").permitAll()
 							.requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
+							// Accesos publicos en general
+							.requestMatchers(HttpMethod.GET, "/reservations/**").permitAll()
+							.requestMatchers(HttpMethod.GET, "/shifts/**").permitAll()
+							.requestMatchers(HttpMethod.GET, "/inscriptions/**").permitAll()
+							.requestMatchers(HttpMethod.GET, "/asistencias/**").permitAll()
 
                             // Default
                             .anyRequest().authenticated())

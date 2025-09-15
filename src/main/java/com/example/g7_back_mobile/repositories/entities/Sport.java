@@ -1,4 +1,6 @@
 package com.example.g7_back_mobile.repositories.entities;
+import com.example.g7_back_mobile.controllers.dtos.SportDTO;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +20,14 @@ public class Sport {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String sportTypeName;
+
+    public SportDTO toEntity(){
+        return new SportDTO(
+            this.id,
+            this.sportTypeName
+           
+        );
+    }
 
 
 }

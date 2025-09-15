@@ -23,7 +23,7 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/Asistencias")
+@RequestMapping("/asistencias")
 @RequiredArgsConstructor
 public class CourseAttendController {
 
