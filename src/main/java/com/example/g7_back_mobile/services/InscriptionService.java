@@ -127,7 +127,6 @@ public class InscriptionService {
 				"Día: %s\n" +
 				"Horario: de %s a %s hs.\n\n" +
 				"¡Te esperamos!",
-				user.getFirstName(),
 				clase.getName(),
 				courseSchedule.getTeacher(),
 				clase.getLength(),
