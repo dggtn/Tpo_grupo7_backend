@@ -25,31 +25,32 @@ public class AuthenticationController {
   @Autowired
   private final AuthenticationService authService;
 
-   @PostMapping("/iniciar-registro")
-    public ResponseEntity<String> iniciarRegistro(@RequestBody RegisterRequest request) {
-        try {
-            authService.iniciarRegistro(request);
-            return ResponseEntity.ok("Código de verificación enviado al correo.");
-        } catch (UserException e) {
-            // Usamos HttpStatus.CONFLICT (409) si el usuario o email ya existen
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-        } catch (Exception e) {
-            // Usamos HttpStatus.INTERNAL_SERVER_ERROR (500) para otros problemas
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al enviar el correo: " + e.getMessage());
-        }
+  @PostMapping("/iniciar-registro")
+  public ResponseEntity<ResponseData<String>> iniciarRegistro(@RequestBody RegisterRequest request) {
+    try {
+        authService.iniciarRegistro(request);
+        return ResponseEntity.ok(ResponseData.success("Código de verificación enviado al correo."));
+    } catch (UserException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(ResponseData.error(e.getMessage()));
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ResponseData.error("Error al enviar el correo: " + e.getMessage()));
     }
+  }
 
-    @PostMapping("/finalizar-registro")
-    public ResponseEntity<String> finalizarRegistro(@RequestBody VerificationRequest request) {
-        try {
-            authService.finalizarRegistro(request.getEmail(), request.getCode());
-            return ResponseEntity.ok("Usuario registrado y verificado con éxito.");
-        } catch (UserException e) {
-            // Usamos HttpStatus.BAD_REQUEST (400) si el código es incorrecto, expiró, etc.
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error inesperado al finalizar el registro: " + e.getMessage());
-        }
+  @PostMapping("/finalizar-registro")
+  public ResponseEntity<ResponseData<String>> finalizarRegistro(@RequestBody VerificationRequest request) {
+    try {
+        authService.finalizarRegistro(request.getEmail(), request.getCode());
+        return ResponseEntity.ok(ResponseData.success("Usuario registrado y verificado con éxito."));
+    } catch (UserException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ResponseData.error(e.getMessage()));
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ResponseData.error("Error inesperado al finalizar el registro: " + e.getMessage()));
+    }
   }
 
   @Operation(summary = "Autenticar usuario", description = "Permite iniciar sesión a un usuario registrado")
