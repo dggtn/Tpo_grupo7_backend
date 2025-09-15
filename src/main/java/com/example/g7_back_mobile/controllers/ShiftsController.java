@@ -25,7 +25,7 @@ public class ShiftsController {
     @Autowired
     private CourseService courseService;
 
-    @PostMapping("/CourseSchedule/{courseId}/{sedeId}")
+    @PostMapping("/shift/{courseId}/{sedeId}/{teacherId}")
     public ResponseEntity<ResponseData<?>> createCourseSchedule(
             @PathVariable Long courseId,
             @PathVariable Long sedeId,

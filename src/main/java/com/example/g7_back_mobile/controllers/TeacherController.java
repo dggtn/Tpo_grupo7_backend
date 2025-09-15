@@ -104,7 +104,7 @@ public class TeacherController {
     }
 
     @PutMapping("/{teacherId}/{courseId}")
-    public ResponseEntity<ResponseData<?>> cargarProfesParaCurso(@PathVariable("profeId") Long profeId, @PathVariable("courseId") Long courseId) {
+    public ResponseEntity<ResponseData<?>> cargarProfesParaCurso(@PathVariable("teacherId") Long profeId, @PathVariable("courseId") Long courseId) {
         try {
 
             teacherService.cargarProfe(profeId, courseId);

@@ -56,23 +56,20 @@ public class SecurityConfig {
                             .requestMatchers("/users/**").authenticated()
 							
 							// Rutas públicas para cargar datos por default y acceder a ellos
-                        	.requestMatchers(HttpMethod.POST, "/headquarters/initializeHeadquarters").permitAll()
-							.requestMatchers(HttpMethod.GET, "/headquarters/**").permitAll()
-                        	.requestMatchers(HttpMethod.POST, "/teachers/initializeTeachers").permitAll()
-							.requestMatchers(HttpMethod.GET, "/teachers/**").permitAll()
-							.requestMatchers(HttpMethod.POST, "/sports/initializeSports").permitAll()
-							.requestMatchers(HttpMethod.GET, "/sports/**").permitAll()
-							.requestMatchers(HttpMethod.POST, "/courses/initializeCourses").permitAll()
-							.requestMatchers(HttpMethod.GET, "/courses/**").permitAll()
+                        	.requestMatchers("/headquarters/**").permitAll()
+							.requestMatchers("/teachers/**").permitAll()
+							.requestMatchers("/sports/**").permitAll()
+							.requestMatchers("/courses/**").permitAll()
+							.requestMatchers("/shifts/**").permitAll()
 							
 							// Accesos publicos en general
 							.requestMatchers(HttpMethod.GET, "/reservations/**").permitAll()
-							.requestMatchers(HttpMethod.GET, "/shifts/**").permitAll()
 							.requestMatchers(HttpMethod.GET, "/inscriptions/**").permitAll()
 							.requestMatchers(HttpMethod.GET, "/asistencias/**").permitAll()
 
                             // Default
-                            .anyRequest().authenticated())
+                            .anyRequest().authenticated()
+							)
 
                     .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                     .authenticationProvider(authenticationProvider)

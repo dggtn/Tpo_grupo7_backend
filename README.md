@@ -3,7 +3,19 @@
  1. Crear una lista de sedes: [POST] http://localhost:8080/headquarters/initializeHeadquarters
  2. Crear una lista de maestros: [POST] http://localhost:8080/teachers/initializeTeachers 
  3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses 
- 
+ 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/{courseId} 
+ 5. Agignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
+ 6. Crear cronogramas/"shifts" (los que quiera segun profes y sedes ya asignados) para un curso: [POST] http://localhost:8080/shifts/shift/{courseId}/{sedeId}/{teacherId} - JSON-BODY:
+        {
+            "horaInicio":"16:30", 
+            "horaFin":"18:20",
+            "vacancy":12,
+            "diaEnQueSeDicta":3
+        }
+
+ 7. Iniciar y finalizar registro, luego autenticarse.
+ 8. 
+
  
  # # Para hacer correr el backend con MySQL:
  
