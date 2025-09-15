@@ -43,8 +43,10 @@ public class SecurityConfig {
 							// Swagger
 							.requestMatchers("/swagger-ui/**").permitAll()
 							.requestMatchers("/v3/api-docs/**").permitAll()
-							//Auth
-                            .requestMatchers("/auth/**").permitAll()
+							//Auth - endpoints públicos
+                            .requestMatchers("/auth/iniciar-registro", "/auth/finalizar-registro", "/auth/authenticate").permitAll()
+                            // Auth - logout requiere autenticación
+                            .requestMatchers("/auth/logout").authenticated()
                             // User
                             .requestMatchers("/users/**").authenticated()
 
@@ -56,6 +58,7 @@ public class SecurityConfig {
 
                 return http.build();
         }
+        
         // Configuracion de CORS
 	@Bean
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
