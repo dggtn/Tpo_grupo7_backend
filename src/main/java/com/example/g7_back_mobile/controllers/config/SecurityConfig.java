@@ -29,70 +29,75 @@ public class SecurityConfig {
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http.csrf(csrf -> csrf
-						.ignoringRequestMatchers("/h2-console/**", "/swagger-ui/**", "/v3/api-docs/**"))
-					.headers(headers -> headers
-							.frameOptions(frameOptions -> frameOptions.sameOrigin()))
-					.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                http
+                    // CONFIGURACIÓN CORS Y CSRF - SIN DUPLICADOS
+                    .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                     .csrf(AbstractHttpConfigurer::disable)
+                    
+                    // CONFIGURACIÓN DE HEADERS PARA H2 CONSOLE
+                    .headers(headers -> headers
+                            .frameOptions(frameOptions -> frameOptions.sameOrigin()))
+                    
+                    // CONFIGURACIÓN DE AUTORIZACIÓN
                     .authorizeHttpRequests(req -> req
-							
-							//h2-console
-							.requestMatchers("/h2-console/**").permitAll()
-							
-							// Swagger
-							.requestMatchers("/swagger-ui/**").permitAll()
-							.requestMatchers("/v3/api-docs/**").permitAll()
-							
-							//Auth - endpoints públicos
+                            
+                            // H2-console
+                            .requestMatchers("/h2-console/**").permitAll()
+                            
+                            // Swagger
+                            .requestMatchers("/swagger-ui/**").permitAll()
+                            .requestMatchers("/v3/api-docs/**").permitAll()
+                            
+                            // Auth - endpoints públicos
                             .requestMatchers("/auth/iniciar-registro", "/auth/finalizar-registro", "/auth/authenticate").permitAll()
                             
-							// Auth - logout requiere autenticación
+                            // Auth - logout requiere autenticación
                             .requestMatchers("/auth/logout").authenticated()
                             
-							// User
+                            // User
                             .requestMatchers("/users/**").authenticated()
-							
-							// Rutas públicas para cargar datos por default y acceder a ellos
-                        	.requestMatchers("/headquarters/**").permitAll()
-							.requestMatchers("/teachers/**").permitAll()
-							.requestMatchers("/sports/**").permitAll()
-							.requestMatchers("/courses/**").permitAll()
-							.requestMatchers("/shifts/**").permitAll()
-							
-							 // INSCRIPCIONES, RESERVAS y ASISTENCIAS REQUIEREN AUTENTICACIÓN
-							.requestMatchers("/inscriptions/**").authenticated()
-							.requestMatchers("/reservations/**").authenticated()
-							.requestMatchers("/asistencias/**").authenticated()
+                            
+                            // Rutas públicas para cargar datos por default y acceder a ellos
+                            .requestMatchers("/headquarters/**").permitAll()
+                            .requestMatchers("/teachers/**").permitAll()
+                            .requestMatchers("/sports/**").permitAll()
+                            .requestMatchers("/courses/**").permitAll()
+                            .requestMatchers("/shifts/**").permitAll()
+                            
+                            // INSCRIPCIONES, RESERVAS y ASISTENCIAS REQUIEREN AUTENTICACIÓN
+                            .requestMatchers("/inscriptions/**").authenticated()
+                            .requestMatchers("/reservations/**").authenticated()
+                            .requestMatchers("/asistencias/**").authenticated()
 
                             // Default
                             .anyRequest().authenticated()
-							)
+                    )
 
+                    // CONFIGURACIÓN DE SESIÓN Y AUTENTICACIÓN
                     .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                     .authenticationProvider(authenticationProvider)
                     .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
-					// Logging detallado para debug
-					.exceptionHandling(ex -> ex
-						.authenticationEntryPoint((request, response, authException) -> {
-							System.err.println("[Security] AUTHENTICATION FAILED for URI: " + request.getRequestURI());
-							System.err.println("[Security] Method: " + request.getMethod());
-							System.err.println("[Security] Remote Address: " + request.getRemoteAddr());
-							System.err.println("[Security] Authorization Header: " + request.getHeader("Authorization"));
-							System.err.println("[Security] Exception: " + authException.getMessage());
-							System.err.println("[Security] Exception Type: " + authException.getClass().getSimpleName());
-							authException.printStackTrace();
-							response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required");
-						})
-						.accessDeniedHandler((request, response, accessDeniedException) -> {
-							System.err.println("[Security] ACCESS DENIED for URI: " + request.getRequestURI());
-							System.err.println("[Security] User: " + (request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "null"));
-							System.err.println("[Security] Exception: " + accessDeniedException.getMessage());
-							accessDeniedException.printStackTrace();
-							response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
-						})
-					);
+                    // MANEJO DE EXCEPCIONES CON LOGGING DETALLADO
+                    .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            System.err.println("[Security] AUTHENTICATION FAILED for URI: " + request.getRequestURI());
+                            System.err.println("[Security] Method: " + request.getMethod());
+                            System.err.println("[Security] Remote Address: " + request.getRemoteAddr());
+                            System.err.println("[Security] Authorization Header: " + request.getHeader("Authorization"));
+                            System.err.println("[Security] Exception: " + authException.getMessage());
+                            System.err.println("[Security] Exception Type: " + authException.getClass().getSimpleName());
+                            authException.printStackTrace();
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication required");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            System.err.println("[Security] ACCESS DENIED for URI: " + request.getRequestURI());
+                            System.err.println("[Security] User: " + (request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "null"));
+                            System.err.println("[Security] Exception: " + accessDeniedException.getMessage());
+                            accessDeniedException.printStackTrace();
+                            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+                        })
+                    );
                 return http.build();
         }
         
@@ -105,7 +110,7 @@ public class SecurityConfig {
 			"http://10.0.2.2:8080",     // Emulador Android
 			"http://localhost:8080",     // Desarrollo local
 			"http://127.0.0.1:8080",     // Loopback
-			"http://192.168.*"          // Red local (wildcard)
+			"http://192.168.*:*"          // Red local (wildcard)
     	));
     
     	// O usar setAllowedOriginPatterns para más flexibilidad
