@@ -52,6 +52,10 @@
         
                 }
 
+ ## Aclaración importante:
+ 
+    A la hora de usar updateUser, se puede actualizar todos los datos, menos el password y el username, que por default queda como el email, ya que tanto el registro como la autenticacion piden el email y no el username. la configuracion del token y los permisos tuvieron que ajustarse asi.
+
  # # Para hacer correr el backend con MySQL:
  
  a) Crear una scheme con el nombre mobile_back (tal como esta escrito en el archivo application.properties en la carpeta de rsources dentro de la carpeta main)
