@@ -24,7 +24,7 @@ public class UserService {
             System.out.println("[UserService.getUserByEmail] Buscando usuario con email: " + email);
             User user = userRepository.findByEmail(email)
                     .orElseThrow(() -> new UserException("Usuario no encontrado con email: " + email));
-            System.out.println("[UserService.getUserByEmail] Usuario encontrado: " + user.getUsername());
+            System.out.println("[UserService.getUserByEmail] Usuario encontrado: " + user.getEmail());
             return user;
         } catch (UserException error) {
             System.err.println("[UserService.getUserByEmail] Usuario no encontrado: " + error.getMessage());

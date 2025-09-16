@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 
 @Service
@@ -38,7 +37,7 @@ public class JwtService {
                     .subject(userDetails.getUsername())
                     .issuedAt(new Date(System.currentTimeMillis()))
                     .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                    .signWith(getSecretKey(), SignatureAlgorithm.HS256) // Especifica algoritmo
+                    .signWith(getSecretKey())  // Usar solo la clave, el algoritmo se detecta automáticamente
                     .compact();
             
             System.out.println("[JwtService.generateToken] Token generado para usuario: " + userDetails.getUsername());
@@ -74,7 +73,7 @@ public class JwtService {
             return expired;
         } catch (Exception e) {
             System.err.println("[JwtService.isTokenExpired] Token expiration check failed: " + e.getMessage());
-            return true; // Si no se puede verificar, considerar como expirado
+            return true;
         }
     }
 
@@ -107,53 +106,52 @@ public class JwtService {
     private Claims extractAllClaims(String token) {
         try {
             System.out.println("[JwtService.extractAllClaims] Intentando parsear token...");
+            
+            // ✅ CORRECCIÓN PARA JJWT 0.12.5: Usar la API correcta
             Claims claims = Jwts.parser()
-                    .verifyWith(getSecretKey())
+                    .verifyWith(getSecretKey())     // verifyWith es correcto para 0.12.5
                     .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+                    .parseSignedClaims(token)       // parseSignedClaims es correcto para 0.12.5
+                    .getPayload();                  // getPayload es correcto para 0.12.5
+            
             System.out.println("[JwtService.extractAllClaims] Token parseado exitosamente");
+            System.out.println("[JwtService.extractAllClaims] Subject del token: " + claims.getSubject());
             return claims;
         } catch (JwtException | IllegalArgumentException e) {
             System.err.println("[JwtService.extractAllClaims] Failed to parse token: " + e.getMessage());
-            System.err.println("[JwtService.extractAllClaims] Token problematico: " + token.substring(0, Math.min(50, token.length())) + "...");
+            System.err.println("[JwtService.extractAllClaims] Token problemático: " + token.substring(0, Math.min(50, token.length())) + "...");
             throw e;
         }
     }
 
     private SecretKey getSecretKey() {
         try {
-            System.out.println("[JwtService.getSecretKey] Procesando clave secreta...");
+            System.out.println("[JwtService.getSecretKey] Creando clave secreta...");
             
-            // Intenta decodificar como Base64
-            byte[] keyBytes = Base64.getDecoder().decode(secretKey);
-            System.out.println("[JwtService.getSecretKey] Clave Base64 decodificada, longitud: " + keyBytes.length + " bytes");
+            // ✅ SOLUCIÓN SIMPLE Y CONSISTENTE
+            // Usar directamente la cadena sin decodificar Base64
+            String key = secretKey;
             
-            // Verifica que la clave tenga la longitud adecuada para HS256 (mínimo 32 bytes)
-            if (keyBytes.length < 32) {
-                System.err.println("[JwtService.getSecretKey] Clave muy corta (" + keyBytes.length + " bytes), necesita mínimo 32 bytes para HS256");
-                throw new IllegalArgumentException("Key too short for HS256");
+            // Si la clave es muy corta, repetirla hasta alcanzar 32 caracteres
+            while (key.length() < 32) {
+                key += secretKey;
             }
             
-            SecretKey key = Keys.hmacShaKeyFor(keyBytes);
-            System.out.println("[JwtService.getSecretKey] Clave secreta HS256 creada exitosamente");
-            return key;
+            // Tomar solo los primeros 32 caracteres para consistencia
+            key = key.substring(0, 32);
             
-        } catch (IllegalArgumentException e) {
-            System.err.println("[JwtService.getSecretKey] Error decodificando Base64: " + e.getMessage());
-            System.err.println("[JwtService.getSecretKey] Generando nueva clave segura...");
+            SecretKey secretKeyObj = Keys.hmacShaKeyFor(key.getBytes());
+            System.out.println("[JwtService.getSecretKey] Clave secreta creada exitosamente");
+            return secretKeyObj;
             
-            // Si falla, generar una clave nueva y segura
-            SecretKey newKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
-            String newKeyBase64 = Base64.getEncoder().encodeToString(newKey.getEncoded());
-            System.err.println("[JwtService.getSecretKey] IMPORTANTE: Actualiza tu application.properties con esta clave:");
-            System.err.println("application.security.jwt.secretKey=" + newKeyBase64);
-            
-            return newKey;
         } catch (Exception error) {
             System.err.println("[JwtService.getSecretKey] Error inesperado: " + error.getMessage());
-            // Como último recurso, generar clave temporal
-            return Keys.secretKeyFor(SignatureAlgorithm.HS256);
+            error.printStackTrace();
+            
+            // Clave de respaldo fija
+            String fallbackKey = "dGhpc0lzQVNlY3VyZUtleUZvckpXVFRva2VuMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGRw==";
+            System.err.println("[JwtService.getSecretKey] Usando clave de respaldo");
+            return Keys.hmacShaKeyFor(fallbackKey.getBytes());
         }
     }
 }
