@@ -1,23 +1,55 @@
  # # Endpoints en orden de prioridad segun lógica de relaciones:
 
- 1. Crear una lista de sedes: [POST] http://localhost:8080/headquarters/initializeHeadquarters
- 2. Crear una lista de maestros: [POST] http://localhost:8080/teachers/initializeTeachers 
+    ## Inicializar bases de datos por default de Sedes, profesores y deportes
+
+ 1. Crear una lista de sedes sin JSON-BODY: [POST] http://localhost:8080/headquarters/initializeHeadquarters
+
+ 2. Crear una lista de maestros sin JSON-BODY: [POST] http://localhost:8080/teachers/initializeTeachers 
+
  3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses 
- 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/{courseId} 
+
+ 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/
+ {courseId} 
+
  5. Agignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
+
  6. Crear cronogramas/"shifts" (los que quiera segun profes y sedes ya asignados) para un curso: [POST] http://localhost:8080/shifts/shift/{courseId}/{sedeId}/{teacherId} - JSON-BODY:
 
-       {
+        {
+
             "horaInicio":"16:30", 
             "horaFin":"18:20",
             "vacancy":12,
             "diaEnQueSeDicta":3
+
         }
 
  8. Iniciar y finalizar registro, luego autenticarse.
- 9. 
 
- 
+    ## A partir de aca, siempre debes poner Authorization Bearer Token
+
+ 9. Reserva un curso o inscribete directamente:
+
+        9.a. [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
+
+                {
+
+                    "idUser":1,
+                    "idShift":1,
+                    "metodoDePago":"CREDIT_CARD"
+
+                }
+        9.b. [POST] http://localhost:8080/inscriptions/inscribir - Mismo JSON-BODY anterior.
+        9.c. [POST] http://localhost:8080/inscriptions/inscribir_reserva - Mismo JSON-BODY anterior. (Asegurate que hayas reservado el curso para evitar un BAD_REQUEST)
+
+ 10. Tomar Asistencia: [POST] http://localhost:8080/asistencias/registrar_asistencia - JSON-BODY:
+           
+                {
+                    "idUser":1,
+                    "idCronograma":1
+        
+                }
+
  # # Para hacer correr el backend con MySQL:
  
  a) Crear una scheme con el nombre mobile_back (tal como esta escrito en el archivo application.properties en la carpeta de rsources dentro de la carpeta main)
