@@ -23,7 +23,6 @@ import com.example.g7_back_mobile.services.InscriptionService;
 import com.example.g7_back_mobile.services.UserService;
 import com.example.g7_back_mobile.services.exceptions.UserException;
 
-
 @RestController
 @RequestMapping("/inscriptions")
 public class InscriptionController {
@@ -36,44 +35,124 @@ public class InscriptionController {
     @PostMapping("/inscribir")
     public ResponseEntity<ResponseData<?>> enrollUser(@RequestBody ReservationDTO reservationDTO) {
         try {
+            System.out.println("[InscriptionController.enrollUser] Recibiendo petición de inscripción: " + reservationDTO);
+            
+            // Validaciones básicas
+            if (reservationDTO.getIdUser() == null) {
+                return ResponseEntity.badRequest()
+                    .body(ResponseData.error("El ID del usuario es obligatorio."));
+            }
+            
+            if (reservationDTO.getIdShift() == null) {
+                return ResponseEntity.badRequest()
+                    .body(ResponseData.error("El ID del turno es obligatorio."));
+            }
+            
+            if (reservationDTO.getMetodoDePago() == null) {
+                return ResponseEntity.badRequest()
+                    .body(ResponseData.error("El método de pago es obligatorio."));
+            }
 
             InscripcionExitosaDTO resultado = inscriptionService.enrollUser(reservationDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success(resultado));
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
+            
+            System.out.println("[InscriptionController.enrollUser] Inscripción exitosa con ID: " + resultado.getIdInscripcion());
+            
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseData.success(resultado));
+                
+        } catch (IllegalArgumentException e) {
+            System.err.println("[InscriptionController.enrollUser] Error de validación: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error("Error de validación: " + e.getMessage()));
+                
+        } catch (IllegalStateException e) {
+            System.err.println("[InscriptionController.enrollUser] Error de estado: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ResponseData.error("Error de estado: " + e.getMessage()));
+                
+        } catch (UserException e) {
+            System.err.println("[InscriptionController.enrollUser] Error de usuario: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+                
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Ocurrió un error inesperado al inscribir."));
+            System.err.println("[InscriptionController.enrollUser] Error inesperado: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Ocurrió un error inesperado al inscribir. Por favor, intente nuevamente."));
         }
     }
 
     @PostMapping("/inscribir_reserva")
     public ResponseEntity<ResponseData<?>> enrollWithReservation(@RequestBody ReservationDTO reservationDTO) {
         try {
+            System.out.println("[InscriptionController.enrollWithReservation] Recibiendo petición de inscripción con reserva: " + reservationDTO);
+            
+            // Validaciones básicas
+            if (reservationDTO.getIdUser() == null) {
+                return ResponseEntity.badRequest()
+                    .body(ResponseData.error("El ID del usuario es obligatorio."));
+            }
+            
+            if (reservationDTO.getIdShift() == null) {
+                return ResponseEntity.badRequest()
+                    .body(ResponseData.error("El ID del turno es obligatorio."));
+            }
 
             InscripcionExitosaDTO resultado = inscriptionService.enrollWithReservation(reservationDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success(resultado));
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
+            
+            System.out.println("[InscriptionController.enrollWithReservation] Inscripción con reserva exitosa con ID: " + resultado.getIdInscripcion());
+            
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseData.success(resultado));
+                
+        } catch (IllegalArgumentException e) {
+            System.err.println("[InscriptionController.enrollWithReservation] Error de validación: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error("Error de validación: " + e.getMessage()));
+                
+        } catch (IllegalStateException e) {
+            System.err.println("[InscriptionController.enrollWithReservation] Error de estado: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ResponseData.error("Error de estado: " + e.getMessage()));
+                
+        } catch (UserException e) {
+            System.err.println("[InscriptionController.enrollWithReservation] Error de usuario: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+                
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Ocurrió un error inesperado al inscribir."));
+            System.err.println("[InscriptionController.enrollWithReservation] Error inesperado: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Ocurrió un error inesperado al inscribir. Por favor, intente nuevamente."));
         }
     }
 
     @GetMapping("/by-user")
     public ResponseEntity<ResponseData<?>> getInscriptionsByUser(@AuthenticationPrincipal UserDetails userDetails) {
         try {
-            // CAMBIO: Usar getUserByEmail en lugar de getUserByUsername
+            System.out.println("[InscriptionController.getInscriptionsByUser] Consultando inscripciones para usuario: " + userDetails.getUsername());
+            
+            //Usar getUserByEmail en lugar de getUserByUsername
             User authUser = userService.getUserByEmail(userDetails.getUsername());
             List<InscriptionDTO> inscriptions = inscriptionService.getUserInscriptions(authUser.getId())
                     .stream().map(Inscription::toDTO).toList();
             
-            return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(inscriptions));
+            System.out.println("[InscriptionController.getInscriptionsByUser] Encontradas " + inscriptions.size() + " inscripciones");
+            
+            return ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseData.success(inscriptions));
+                
         } catch (UserException error) {
-            return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(ResponseData.error(error.getMessage()));
+            System.err.println("[InscriptionController.getInscriptionsByUser] Error de usuario: " + error.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ResponseData.error(error.getMessage()));
+                
         } catch (Exception error) {
-            System.out.printf("[InscriptionController.getInscriptionsByUser] -> %s", error.getMessage());
+            System.err.println("[InscriptionController.getInscriptionsByUser] Error inesperado: " + error.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseData.error("No se pudieron obtener las inscripciones."));
+                .body(ResponseData.error("No se pudieron obtener las inscripciones. Por favor, intente nuevamente."));
         }
     }
 }

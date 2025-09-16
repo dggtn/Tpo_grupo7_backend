@@ -13,7 +13,6 @@ public class InscripcionExitosaDTO {
 
     private Long idInscripcion;
     private String nombreCurso;
-    private String nombreUser;
     private String emailUser;
     private LocalDateTime fechaInscripcion;
     private String estado;

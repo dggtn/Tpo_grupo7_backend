@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import com.example.g7_back_mobile.controllers.dtos.AsistenciaDTO;
 import com.example.g7_back_mobile.controllers.dtos.AsistenciaResultadoDTO;
 import com.example.g7_back_mobile.controllers.dtos.ResponseData;
+import com.example.g7_back_mobile.repositories.entities.CourseAttend;
 import com.example.g7_back_mobile.services.CourseAttendService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -33,27 +34,65 @@ public class CourseAttendController {
     @PostMapping("/registrar_asistencia")
     public ResponseEntity<ResponseData<?>> registrarAsistencia(@RequestBody AsistenciaDTO asistenciaDTO) {
         try {
-            // Llamamos a un método en el controlador que crearemos ahora
-            courseAttendService.registrarAsistencia(asistenciaDTO);
-            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success("Asistencia registrada con éxito."));
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
+            System.out.println("[CourseAttendController.registrarAsistencia] Recibiendo petición: " + asistenciaDTO);
+            
+            CourseAttend asistencia = courseAttendService.registrarAsistencia(asistenciaDTO);
+            
+            String mensaje = String.format("Asistencia registrada exitosamente para la fecha %s", 
+                asistencia.getFechaAsistencia());
+                
+            return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseData.success(mensaje));
+                
+        } catch (IllegalArgumentException e) {
+            System.err.println("[CourseAttendController.registrarAsistencia] Error de validación: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error("Error de validación: " + e.getMessage()));
+                
+        } catch (IllegalStateException e) {
+            System.err.println("[CourseAttendController.registrarAsistencia] Error de estado: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ResponseData.error("Error de estado: " + e.getMessage()));
+                
+        } catch (Exception e) {
+            System.err.println("[CourseAttendController.registrarAsistencia] Error inesperado: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error interno del servidor. Por favor, intente nuevamente."));
         }
     }
 
     @GetMapping("/inscripcion/{id}/resultado")
     public ResponseEntity<ResponseData<?>> getResultadoAsistencia(@PathVariable Long id) {
         try {
+            System.out.println("[CourseAttendController.getResultadoAsistencia] Consultando inscripción ID: " + id);
+            
             AsistenciaResultadoDTO resultado = courseAttendService.verificarAsistencia(id);
+            
             return ResponseEntity.ok(ResponseData.success(resultado));
+            
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
+            System.err.println("[CourseAttendController.getResultadoAsistencia] Error de validación: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error("Error de validación: " + e.getMessage()));
+                
+        } catch (Exception e) {
+            System.err.println("[CourseAttendController.getResultadoAsistencia] Error inesperado: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error interno del servidor. Por favor, intente nuevamente."));
         }
     }
 
     @GetMapping(value = "/qr/{shiftId}", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<ResponseData<byte[]>> generateQrCode(@PathVariable Long shiftId) {
+    public ResponseEntity<byte[]> generateQrCode(@PathVariable Long shiftId) {
         try {
+            System.out.println("[CourseAttendController.generateQrCode] Generando QR para shift ID: " + shiftId);
+            
+            if (shiftId == null || shiftId <= 0) {
+                return ResponseEntity.badRequest().build();
+            }
+            
             String qrContent = String.valueOf(shiftId);
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
             BitMatrix bitMatrix = qrCodeWriter.encode(qrContent, BarcodeFormat.QR_CODE, 250, 250);
@@ -62,10 +101,16 @@ public class CourseAttendController {
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
             byte[] pngData = pngOutputStream.toByteArray();
 
-            return ResponseEntity.ok(ResponseData.success(pngData));
+            System.out.println("[CourseAttendController.generateQrCode] QR generado exitosamente, tamaño: " + pngData.length + " bytes");
+            
+            return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .body(pngData);
+                
         } catch (Exception e) {
+            System.err.println("[CourseAttendController.generateQrCode] Error generando QR: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-    
 }
