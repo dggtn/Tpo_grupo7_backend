@@ -38,10 +38,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         // Obtener el header Authorization
         final String authHeader = request.getHeader("Authorization");
+        final String requestURI = request.getRequestURI();
+        
+        System.out.println("[JwtAuthenticationFilter] Procesando request: " + request.getMethod() + " " + requestURI);
+        System.out.println("[JwtAuthenticationFilter] Authorization header: " + (authHeader != null ? "Present" : "Missing"));
         
         // Si no hay header Authorization o no empieza con "Bearer ", continuar sin autenticar
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            System.out.println("[JwtAuthenticationFilter] No Authorization header or invalid format for: " + request.getRequestURI());
+            System.out.println("[JwtAuthenticationFilter] No Authorization header or invalid format for: " + requestURI);
             filterChain.doFilter(request, response);
             return;
         }
@@ -49,19 +53,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // Extraer el token JWT
             final String jwt = authHeader.substring(7);
-            System.out.println("[JwtAuthenticationFilter] Processing token for URI: " + request.getRequestURI());
+            System.out.println("[JwtAuthenticationFilter] Token extraído: " + jwt.substring(0, Math.min(20, jwt.length())) + "...");
             
             // Extraer el email del token
             final String userEmail = jwtService.extractUsername(jwt);
-            System.out.println("[JwtAuthenticationFilter] Extracted email from token: " + userEmail);
+            System.out.println("[JwtAuthenticationFilter] Email extraído del token: " + userEmail);
             
             // Si tenemos un email válido y no hay autenticación previa
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 
                 // Cargar los detalles del usuario
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-                System.out.println("[JwtAuthenticationFilter] Loaded user: " + userDetails.getUsername());
-                System.out.println("[JwtAuthenticationFilter] User authorities: " + userDetails.getAuthorities());
+                System.out.println("[JwtAuthenticationFilter] Usuario cargado: " + userDetails.getUsername());
+                System.out.println("[JwtAuthenticationFilter] Authorities del usuario: " + userDetails.getAuthorities());
                 
                 // Validar el token
                 if (jwtService.isTokenValid(jwt, userDetails)) {
@@ -75,14 +79,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     
                     // Establecer la autenticación en el contexto de seguridad
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    System.out.println("[JwtAuthenticationFilter] Authentication set successfully for: " + userEmail);
+                    System.out.println("[JwtAuthenticationFilter] Autenticación establecida exitosamente para: " + userEmail);
                 } else {
-                    System.err.println("[JwtAuthenticationFilter] Token validation failed for: " + userEmail);
+                    System.err.println("[JwtAuthenticationFilter] Token validation failed para: " + userEmail);
                     SecurityContextHolder.clearContext();
                 }
             } else if (userEmail == null) {
-                System.err.println("[JwtAuthenticationFilter] Could not extract email from token");
+                System.err.println("[JwtAuthenticationFilter] No se pudo extraer email del token");
                 SecurityContextHolder.clearContext();
+            } else {
+                System.out.println("[JwtAuthenticationFilter] Usuario ya autenticado: " + SecurityContextHolder.getContext().getAuthentication().getName());
             }
             
         } catch (Exception error) {
@@ -90,11 +96,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             error.printStackTrace();
             SecurityContextHolder.clearContext();
             
-            // Enviar error de autenticación
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Invalid JWT token\", \"message\": \"" + error.getMessage() + "\"}");
-            return;
+            // NO retornar aquí, dejar que Spring Security maneje el error
         }
 
         // SIEMPRE continuar con la cadena de filtros

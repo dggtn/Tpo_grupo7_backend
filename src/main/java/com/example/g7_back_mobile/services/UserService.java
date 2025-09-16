@@ -19,30 +19,37 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    public User getUserByEmail(String email) throws Exception {
+    public User getUserByEmail(String email) throws UserException {
         try {
-            return userRepository.findByEmail(email)
-                    .orElseThrow(() -> new UserException("Usuario no encontrado"));
+            System.out.println("[UserService.getUserByEmail] Buscando usuario con email: " + email);
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new UserException("Usuario no encontrado con email: " + email));
+            System.out.println("[UserService.getUserByEmail] Usuario encontrado: " + user.getUsername());
+            return user;
         } catch (UserException error) {
-            throw new UserException(error.getMessage());
+            System.err.println("[UserService.getUserByEmail] Usuario no encontrado: " + error.getMessage());
+            throw error;
         } catch (Exception error) {
-            throw new Exception("[UserService.getUserByEmail] -> " + error.getMessage());
+            System.err.println("[UserService.getUserByEmail] Error inesperado: " + error.getMessage());
+            throw new UserException("[UserService.getUserByEmail] -> " + error.getMessage());
         }
     }
 
-    public User getUserByUsername(String username) throws Exception {
+    public User getUserByUsername(String username) throws UserException {
         try {
-          return userRepository.findByUsername(username).orElseThrow(() -> new UserException("Usuario no encontrado"));
+            System.out.println("[UserService.getUserByUsername] Buscando usuario con username: " + username);
+            return userRepository.findByUsername(username)
+                    .orElseThrow(() -> new UserException("Usuario no encontrado con username: " + username));
         } catch (UserException error) {
-          throw new UserException(error.getMessage());
+            throw error;
         } catch (Exception error) {
-          throw new Exception("[UserService.getUserByUsername] -> " + error.getMessage());
+            throw new UserException("[UserService.getUserByUsername] -> " + error.getMessage());
         }
     }
 
-
-	@Transactional
+    @Transactional
     public User createUser(RegisterRequest request) {
+        System.out.println("[UserService.createUser] Creando usuario con email: " + request.getEmail());
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email '" + request.getEmail() + "' already exists");
@@ -54,28 +61,27 @@ public class UserService {
             request.getFirstName(),
             request.getLastName(),
             request.getEmail(),
-			      passwordEncoder.encode(request.getPassword()),
+            passwordEncoder.encode(request.getPassword()),
             Role.USER,
             request.getAge(),
             request.getAddress(),
             request.getUrlAvatar()
-
         );
 
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        System.out.println("[UserService.createUser] Usuario creado exitosamente con ID: " + savedUser.getId());
+        return savedUser;
     }
 
-   public User updateUser(User user) throws Exception {
+    public User updateUser(User user) throws Exception {
         try {
-          return userRepository.save(user);
+            return userRepository.save(user);
         } catch (Exception error) {
-          throw new Exception("[UserService.updateUser] -> " + error.getMessage());
+            throw new Exception("[UserService.updateUser] -> " + error.getMessage());
         }
     }
 
-    // En UserService.java
     public java.util.List<User> getAllUsers() {
         return userRepository.findAll();
     }
-
 }
