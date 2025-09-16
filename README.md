@@ -28,21 +28,21 @@
 
     ## A partir de aca, siempre debes poner Authorization Bearer Token
 
-    8. Reserva un curso o inscribete directamente:
+ 8. Reserva un curso o inscribete directamente:
  
-    8.1. [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
+ 8.1. [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
  
-                 {
+           {
  
                      "idUser":1,
                      "idShift":1,
                      "metodoDePago":"CREDIT_CARD"
  
-                 }
+            }
      
-    8.2. [POST] http://localhost:8080/inscriptions/inscribir - Mismo JSON-BODY anterior.
+ 8.2. [POST] http://localhost:8080/inscriptions/inscribir - Mismo JSON-BODY anterior.
      
-    8.3. [POST] http://localhost:8080/inscriptions/inscribir_reserva - Mismo JSON-BODY anterior. (Asegurate que hayas reservado el curso para evitar un BAD_REQUEST)
+ 8.3. [POST] http://localhost:8080/inscriptions/inscribir_reserva - Mismo JSON-BODY anterior. (Asegurate que hayas reservado el curso para evitar un BAD_REQUEST)
 
  9. Tomar Asistencia: [POST] http://localhost:8080/asistencias/registrar_asistencia - JSON-BODY:
            
