@@ -1,6 +1,6 @@
  # # Endpoints en orden de prioridad segun lógica de relaciones:
 
-    ## Inicializar bases de datos por default de Sedes, profesores y deportes
+   ## Inicializar bases de datos por default de Sedes, profesores y deportes. Pueden agregar elementos a estas listas o modificarlas en sus respectivas capas de servicio (TeacherService, HeadquarterService y CourseService). Aqui pueden agregar imagenes reales a los cursos
 
  1. Crear una lista de sedes sin JSON-BODY: [POST] http://localhost:8080/headquarters/initializeHeadquarters
 
@@ -11,7 +11,7 @@
  4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/
  {courseId} 
 
- 5. Agignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
+ 5. Asignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
 
  6. Crear cronogramas/"shifts" (los que quiera segun profes y sedes ya asignados) para un curso: [POST] http://localhost:8080/shifts/shift/{courseId}/{sedeId}/{teacherId} - JSON-BODY:
 
@@ -24,25 +24,27 @@
 
         }
 
- 8. Iniciar y finalizar registro, luego autenticarse.
+ 7. Iniciar y finalizar registro, luego autenticarse.
 
     ## A partir de aca, siempre debes poner Authorization Bearer Token
 
- 9. Reserva un curso o inscribete directamente:
+ 8. Reserva un curso o inscribete directamente:
+ 
+ 8.1. [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
+ 
+           {
+ 
+                     "idUser":1,
+                     "idShift":1,
+                     "metodoDePago":"CREDIT_CARD"
+ 
+            }
+     
+ 8.2. [POST] http://localhost:8080/inscriptions/inscribir - Mismo JSON-BODY anterior.
+     
+ 8.3. [POST] http://localhost:8080/inscriptions/inscribir_reserva - Mismo JSON-BODY anterior. (Asegurate que hayas reservado el curso para evitar un BAD_REQUEST)
 
-        9.a. [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
-
-                {
-
-                    "idUser":1,
-                    "idShift":1,
-                    "metodoDePago":"CREDIT_CARD"
-
-                }
-        9.b. [POST] http://localhost:8080/inscriptions/inscribir - Mismo JSON-BODY anterior.
-        9.c. [POST] http://localhost:8080/inscriptions/inscribir_reserva - Mismo JSON-BODY anterior. (Asegurate que hayas reservado el curso para evitar un BAD_REQUEST)
-
- 10. Tomar Asistencia: [POST] http://localhost:8080/asistencias/registrar_asistencia - JSON-BODY:
+ 9. Tomar Asistencia: [POST] http://localhost:8080/asistencias/registrar_asistencia - JSON-BODY:
            
                 {
                     "idUser":1,
