@@ -1,6 +1,6 @@
  # # Endpoints en orden de prioridad segun lógica de relaciones:
 
-    ## Inicializar bases de datos por default de Sedes, profesores y deportes
+    ## Inicializar bases de datos por default de Sedes, profesores y deportes. Pueden agregar elementos a estas listas o modificarlas en sus respectivas capas de servicio (TeacherService, HeadquarterService y CourseService). Aqui pueden agregar imagenes reales a los cursos
 
  1. Crear una lista de sedes sin JSON-BODY: [POST] http://localhost:8080/headquarters/initializeHeadquarters
 
