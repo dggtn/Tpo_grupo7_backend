@@ -64,6 +64,9 @@ public class User implements UserDetails{
         setFirstName(newUser.getFirstName());
         setLastName(newUser.getLastName());
         setEmail(newUser.getEmail());
+        setAge(newUser.getAge());
+        setAddress(newUser.getAddress());
+        setUrlAvatar(newUser.getUrlAvatar());
     }
 
     @Override
@@ -71,7 +74,7 @@ public class User implements UserDetails{
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-     @Override
+    @Override
     public String getUsername() {
         // IMPORTANTE: Retornar el email como username para consistency
         return email;
