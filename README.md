@@ -82,21 +82,21 @@ d) Para el envio del código al mail (y para completar el procedimiento de regis
 
  POST http://localhost:8080/auth/iniciar-registro
  
- {
-    "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail
-    "password":"123abc"
-}
+      {
+         "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail
+         "password":"123abc"
+      }
 
 POST http://localhost:8080/auth/finalizar-registro
 
-{
-    "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail, como en el paso anterior    
-    "code": "5772" <--- reemplazar con el código que te llego a tu correo de gmail
-}
+      {
+          "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail, como en el paso anterior    
+          "code": "5772" <--- reemplazar con el código que te llego a tu correo de gmail
+      }
 
 POST http://localhost:8080/auth/authenticate
 
-{
-    "email":"jlazartelagos@gmail.com",  <--- reemplazar por tu cuenta de gmail, como en el paso anterior  
-    "password": "123abc"
-}
+     {
+         "email":"jlazartelagos@gmail.com",  <--- reemplazar por tu cuenta de gmail, como en el paso anterior  
+         "password": "123abc"
+     }
