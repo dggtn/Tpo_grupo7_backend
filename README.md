@@ -8,8 +8,7 @@
 
  3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses 
 
- 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/
- {courseId} 
+ 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/{courseId} 
 
  5. Asignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
 
