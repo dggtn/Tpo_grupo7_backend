@@ -45,7 +45,10 @@ public class AuthenticationService {
         //--------Iniciar Registro--------
 	public void iniciarRegistro(RegisterRequest request) throws UserException {
 		
-		if (emailExists(request.getEmail())) {
+		if (userRepository.existsByUsername(request.getUsername())) {
+			throw new UserException("El nombre de usuario '" + request.getUsername() + "' ya está en uso.");
+		}
+		if (userRepository.existsByEmail(request.getEmail())) {
 			throw new UserException("El correo electrónico '" + request.getEmail() + "' ya está registrado.");
 		}
 
@@ -87,20 +90,21 @@ public class AuthenticationService {
 		finalRequest.setAge(pendingUser.getAge());
 		finalRequest.setAddress(pendingUser.getAddress());
 		finalRequest.setUrlAvatar(pendingUser.getUrlAvatar());
+		
 		userService.createUser(finalRequest); 
 
 		pendingUserRepository.delete(pendingUser);
 	}
 
 
-        public AuthenticationResponse authenticate(AuthenticationRequest request) throws Exception {
+    public AuthenticationResponse authenticate(AuthenticationRequest request) throws Exception {
                 try{
                         authenticationManager.authenticate(
                                 new UsernamePasswordAuthenticationToken(
-                                        request.getEmail(),
+                                        request.getUsername(),
                                         request.getPassword()));
-                User user = userRepository.findByEmail(request.getEmail())
-                        .orElseThrow(() -> new UserException("El usuario " + request.getEmail() + " no existe."));
+                User user = userRepository.findByEmail(request.getUsername())
+                        .orElseThrow(() -> new UserException("El usuario " + request.getUsername() + " no existe."));
                 
                 String jwtToken = jwtService.generateToken(user);
                 return AuthenticationResponse.builder()

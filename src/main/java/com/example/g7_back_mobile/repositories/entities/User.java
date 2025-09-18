@@ -61,7 +61,7 @@ public class User implements UserDetails{
 
 
     public void updateData(User newUser){
-      
+        setUsername(newUser.getUsername());
         setFirstName(newUser.getFirstName());
         setLastName(newUser.getLastName());
         setEmail(newUser.getEmail());
@@ -73,12 +73,6 @@ public class User implements UserDetails{
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
-    }
-
-    @Override
-    public String getUsername() {
-        // IMPORTANTE: Retornar el email como username para consistency
-        return email;
     }
 
     @Override

@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class UserDTO {
 
     private Long id;
+    @NotNull
     private String username;
     private String firstName; 
     private String lastName;

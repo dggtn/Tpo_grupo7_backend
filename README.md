@@ -52,9 +52,6 @@
         
                 }
 
- ## Aclaración importante:
- 
-    A la hora de usar updateUser, se puede actualizar todos los datos, menos el password y el username, que por default queda como el email, ya que tanto el registro como la autenticacion piden el email y no el username. la configuracion del token y los permisos tuvieron que ajustarse asi.
 
  # # Para hacer correr el backend con MySQL:
  
@@ -83,21 +80,22 @@ d) Para el envio del código al mail (y para completar el procedimiento de regis
 
  POST http://localhost:8080/auth/iniciar-registro
  
- {
-    "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail
-    "password":"123abc"
-}
+            {
+                "username":"user",
+                "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail
+                "password":"123abc"
+            }
 
 POST http://localhost:8080/auth/finalizar-registro
 
-{
-    "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail, como en el paso anterior    
-    "code": "5772" <--- reemplazar con el código que te llego a tu correo de gmail
-}
+        {
+            "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail, como en el paso anterior    
+            "code": "5772" <--- reemplazar con el código que te llego a tu correo de gmail
+        }
 
 POST http://localhost:8080/auth/authenticate
 
-{
-    "email":"jlazartelagos@gmail.com",  <--- reemplazar por tu cuenta de gmail, como en el paso anterior  
-    "password": "123abc"
-}
+        {
+            "username":"user",  
+            "password": "123abc"
+        }
