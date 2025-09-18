@@ -64,8 +64,8 @@ public class CourseService {
 		try {
 
 			Course course1 = new Course(null, "Natación Adultos", sportService.createSport(new Sport(null, "Natación")),
-					LocalDate.parse("2025-08-08"), 
 					LocalDate.parse("2025-11-08"), 
+					LocalDate.parse("2025-12-08"), 
 					50,
 					50.0,
 					"imgA.jpg",
@@ -75,8 +75,8 @@ public class CourseService {
 			);
 
 			Course cours2 = new Course(null, "Karate", sportService.createSport(new Sport(null, "Artes Marciales")),
-					LocalDate.parse("2025-07-18"), 
-					LocalDate.parse("2025-08-18"), 
+					LocalDate.parse("2025-10-18"), 
+					LocalDate.parse("2025-11-18"), 
 					50,
 					40.0,
 					"imgB.jpg",
@@ -86,8 +86,8 @@ public class CourseService {
 			);
 
 			Course course3 = new Course(null, "Pilates", sportService.createSport(new Sport(null, "Gimnacia")),
-				    LocalDate.parse("2025-07-11"), 
-					LocalDate.parse("2025-08-11"), 
+				    LocalDate.parse("2025-09-21"), 
+					LocalDate.parse("2025-10-21"), 
 					50,
 					42.0,
 					"imgC.jpg",

@@ -6,7 +6,7 @@
 
  2. Crear una lista de maestros sin JSON-BODY: [POST] http://localhost:8080/teachers/initializeTeachers 
 
- 3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses 
+ 3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses (Actualicen las fechas de inicio y finalizacion del curso en CourseService)
 
  4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/
  {courseId} 
@@ -28,9 +28,9 @@
 
     ## A partir de aca, siempre debes poner Authorization Bearer Token
 
- 8. Reserva un curso o inscribete directamente:
+ 8. Reserva un curso, cancela la reserva, incribite con la asistencia a la reserva, inscribite a la reserva o inscribete directamente sin reserva:
  
- 8.1. [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
+ 8.1.1 [POST] http://localhost:8080/reservations/reservar - JSON-BODY:
  
            {
  
@@ -39,7 +39,8 @@
                      "metodoDePago":"CREDIT_CARD"
  
             }
-     
+ 8.1.2 [POST] http://localhost:8080/reservations/cancelar/{shiftId}
+ 
  8.2. [POST] http://localhost:8080/inscriptions/inscribir - Mismo JSON-BODY anterior.
      
  8.3. [POST] http://localhost:8080/inscriptions/inscribir_reserva - Mismo JSON-BODY anterior. (Asegurate que hayas reservado el curso para evitar un BAD_REQUEST)
