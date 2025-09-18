@@ -37,47 +37,113 @@ public class AuthenticationService {
         @Autowired
         private final EmailService emailService;
 
+	public boolean existeRegistroPendiente(String email) {
+		return pendingUserRepository.existsById(email);
+	}
+
+	public void reenviarCodigoVerificacion(String email) throws UserException {
+		PendingUser pendingUser = pendingUserRepository.findById(email)
+			.orElseThrow(() -> new UserException("No se encontró un registro pendiente para este email. Debes iniciar el proceso de registro nuevamente."));
+
+		// Verificar si no ha pasado demasiado tiempo desde la creación inicial (ej: 24 horas)
+		if (pendingUser.getFechaCreacion() != null && 
+			pendingUser.getFechaCreacion().isBefore(LocalDateTime.now().minusHours(24))) {
+			pendingUserRepository.delete(pendingUser);
+			throw new UserException("El registro pendiente ha expirado completamente. Debes iniciar el proceso de registro nuevamente.");
+		}
+
+		// Verificar límite de reenvíos (máximo 5 por registro)
+		if (pendingUser.getIntentosReenvio() != null && pendingUser.getIntentosReenvio() >= 5) {
+			throw new UserException("Has alcanzado el límite máximo de reenvíos de código. Debes iniciar el proceso de registro nuevamente.");
+		}
+
+		// Verificar tiempo entre reenvíos (mínimo 2 minutos)
+		if (pendingUser.getUltimoReenvio() != null && 
+			pendingUser.getUltimoReenvio().isAfter(LocalDateTime.now().minusMinutes(2))) {
+			long minutosRestantes = java.time.Duration.between(LocalDateTime.now(), 
+				pendingUser.getUltimoReenvio().plusMinutes(2)).toMinutes();
+			throw new UserException("Debes esperar " + (minutosRestantes + 1) + " minutos antes de solicitar un nuevo código.");
+		}
+
+		// Generar nuevo código
+		String nuevoCodigo = String.format("%04d", new Random().nextInt(10000));
+		
+		// Actualizar datos
+		pendingUser.setVerificationCode(nuevoCodigo);
+		pendingUser.setExpiryDate(LocalDateTime.now().plusMinutes(15));
+		pendingUser.setIntentosReenvio(pendingUser.getIntentosReenvio() != null ? 
+		pendingUser.getIntentosReenvio() + 1 : 1);
+		pendingUser.setUltimoReenvio(LocalDateTime.now());
+		
+		// Guardar cambios
+		pendingUserRepository.save(pendingUser);
+		
+		// Enviar nuevo código
+		emailService.sendVerificationCodeResend(pendingUser.getEmail(), nuevoCodigo, 
+        pendingUser.getIntentosReenvio());
+		
+		System.out.println("[AuthenticationService] Código reenviado a: " + email + 
+			" (Intento #" + pendingUser.getIntentosReenvio() + ")");
+	}
+
+
         public boolean emailExists(String email) {
 		return userRepository.existsByEmail(email);
 	}
 
 
-        //--------Iniciar Registro--------
+     //--------Iniciar Registro--------
 	public void iniciarRegistro(RegisterRequest request) throws UserException {
-		
+    
 		if (emailExists(request.getEmail())) {
 			throw new UserException("El correo electrónico '" + request.getEmail() + "' ya está registrado.");
 		}
 
 		String code = String.format("%04d", new Random().nextInt(10000));
+		LocalDateTime ahora = LocalDateTime.now();
 
 		PendingUser pendingUser = PendingUser.builder()
-				.username(request.getUsername()).email(request.getEmail()).password(request.getPassword())
-				.firstName(request.getFirstName()).lastName(request.getLastName())
-				.age(request.getAge()).address(request.getAddress()).urlAvatar(request.getUrlAvatar())
-				.verificationCode(code)
-				.expiryDate(LocalDateTime.now().plusMinutes(15))
-				.build();
+			.username(request.getUsername())
+			.email(request.getEmail())
+			.password(request.getPassword())
+			.firstName(request.getFirstName())
+			.lastName(request.getLastName())
+			.age(request.getAge())
+			.address(request.getAddress())
+			.urlAvatar(request.getUrlAvatar())
+			.verificationCode(code)
+			.expiryDate(ahora.plusMinutes(15))
+			.fechaCreacion(ahora) // NUEVO CAMPO
+			.intentosReenvio(0)   // NUEVO CAMPO
+			.ultimoReenvio(ahora) // NUEVO CAMPO
+			.build();
 
 		pendingUserRepository.save(pendingUser);
-
 		emailService.sendVerificationCode(pendingUser.getEmail(), code);
 	}
 
 	//--------Finalizar Registro--------
 	public void finalizarRegistro(String email, String code) throws Exception {
 		PendingUser pendingUser = pendingUserRepository.findById(email)
-				.orElseThrow(() -> new UserException("No se encontró un registro pendiente para este email. Puede que haya expirado."));
+			.orElseThrow(() -> new UserException("No se encontró un registro pendiente para este email. Puede que haya expirado o necesites iniciar el registro nuevamente."));
 
-		if (pendingUser.getExpiryDate().isBefore(LocalDateTime.now())) {
+		// Verificar si el registro completo ha expirado (24 horas desde creación)
+		if (pendingUser.getFechaCreacion() != null && 
+			pendingUser.getFechaCreacion().isBefore(LocalDateTime.now().minusHours(24))) {
 			pendingUserRepository.delete(pendingUser);
-			throw new UserException("El código de verificación ha expirado. Por favor, intenta registrarte de nuevo.");
+			throw new UserException("El registro pendiente ha expirado completamente. Debes iniciar el proceso de registro nuevamente.");
+		}
+
+		// Verificar si el código actual ha expirado
+		if (pendingUser.getExpiryDate().isBefore(LocalDateTime.now())) {
+			throw new UserException("El código de verificación ha expirado. Puedes solicitar un nuevo código usando la opción 'Reenviar código'.");
 		}
 
 		if (!pendingUser.getVerificationCode().equals(code)) {
 			throw new UserException("El código de verificación es incorrecto.");
 		}
 
+		// Proceder con la creación del usuario
 		RegisterRequest finalRequest = new RegisterRequest();
 		finalRequest.setUsername(pendingUser.getUsername());
 		finalRequest.setEmail(pendingUser.getEmail());
@@ -89,8 +155,9 @@ public class AuthenticationService {
 		finalRequest.setUrlAvatar(pendingUser.getUrlAvatar());
 		
 		userService.createUser(finalRequest); 
-
 		pendingUserRepository.delete(pendingUser);
+		
+		System.out.println("[AuthenticationService] Usuario registrado exitosamente: " + email);
 	}
 
 

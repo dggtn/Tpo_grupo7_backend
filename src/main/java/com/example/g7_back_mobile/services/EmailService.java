@@ -37,4 +37,29 @@ public class EmailService {
         mailSender.send(message);
         System.out.println("Correo de confirmación de curso enviado a: " + to);
     }
+
+    // Método para reenvío de codigo
+    public void sendVerificationCodeResend(String toEmail, String code, int intentoNumero) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("Código de Verificación Reenviado - RitmoFit");
+        
+        String body = String.format(
+            "Hola,\n\n" +
+            "Has solicitado un nuevo código de verificación para completar tu registro.\n\n" +
+            "Tu nuevo código de verificación es: %s\n\n" +
+            "Este código expirará en 15 minutos.\n" +
+            "Este es tu intento #%d de reenvío.\n\n" +
+            "Si no solicitaste este código, puedes ignorar este mensaje.\n\n" +
+            "Saludos,\n" +
+            "El equipo de RitmoFit",
+            code, intentoNumero
+        );
+        
+        message.setText(body);
+        mailSender.send(message);
+        System.out.println("Código de verificación reenviado a: " + toEmail + " (Intento #" + intentoNumero + ")");
+    }
+
 }

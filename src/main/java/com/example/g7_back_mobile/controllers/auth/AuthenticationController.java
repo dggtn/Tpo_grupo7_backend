@@ -55,6 +55,36 @@ public class AuthenticationController {
     }
   }
 
+  @PostMapping("/reenviar-codigo")
+  public ResponseEntity<ResponseData<String>> reenviarCodigo(@RequestBody ReenviarCodigoRequest request) {
+        try {
+            authService.reenviarCodigoVerificacion(request.getEmail());
+            return ResponseEntity.ok(ResponseData.success("Nuevo código de verificación enviado al correo."));
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al reenviar el código: " + e.getMessage()));
+        }
+  }
+
+   @PostMapping("/verificar-email-pendiente")
+   public ResponseEntity<ResponseData<String>> verificarEmailPendiente(@RequestBody VerificarEmailRequest request) {
+        try {
+            boolean existe = authService.existeRegistroPendiente(request.getEmail());
+            if (existe) {
+                return ResponseEntity.ok(ResponseData.success("Registro pendiente encontrado. Puedes solicitar un nuevo código."));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseData.error("No hay registro pendiente para este email."));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al verificar el email: " + e.getMessage()));
+        }
+    }
+
   @Operation(summary = "Autenticar usuario", description = "Permite iniciar sesión a un usuario registrado")
   @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),

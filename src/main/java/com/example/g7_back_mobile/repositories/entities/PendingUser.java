@@ -26,4 +26,9 @@ public class PendingUser {
     // Campos para la verificación
     private String verificationCode;
     private LocalDateTime expiryDate;
+    
+    // NUEVOS CAMPOS PARA RECUPERACIÓN
+    private Integer intentosReenvio; // Número de veces que se ha reenviado el código
+    private LocalDateTime ultimoReenvio; // Última vez que se envió un código
+    private LocalDateTime fechaCreacion; // Cuando se creó el registro pendiente por primera vez
 }
