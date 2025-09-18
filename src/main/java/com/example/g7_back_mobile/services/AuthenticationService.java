@@ -42,49 +42,51 @@ public class AuthenticationService {
 	}
 
 	public void reenviarCodigoVerificacion(String email) throws UserException {
-		PendingUser pendingUser = pendingUserRepository.findById(email)
-			.orElseThrow(() -> new UserException("No se encontró un registro pendiente para este email. Debes iniciar el proceso de registro nuevamente."));
+			PendingUser pendingUser = pendingUserRepository.findById(email)
+				.orElseThrow(() -> new UserException("No se encontró un registro pendiente para este email. Debes iniciar el proceso de registro nuevamente."));
 
-		// Verificar si no ha pasado demasiado tiempo desde la creación inicial (ej: 24 horas)
-		if (pendingUser.getFechaCreacion() != null && 
-			pendingUser.getFechaCreacion().isBefore(LocalDateTime.now().minusHours(24))) {
-			pendingUserRepository.delete(pendingUser);
-			throw new UserException("El registro pendiente ha expirado completamente. Debes iniciar el proceso de registro nuevamente.");
+			LocalDateTime ahora = LocalDateTime.now();
+
+			// Verificar si no ha pasado demasiado tiempo desde la creación inicial (24 horas)
+			if (pendingUser.getFechaCreacion() != null && 
+				pendingUser.getFechaCreacion().isBefore(ahora.minusHours(24))) {
+				pendingUserRepository.delete(pendingUser);
+				throw new UserException("El registro pendiente ha expirado completamente. Debes iniciar el proceso de registro nuevamente.");
+			}
+
+			// Verificar límite de reenvíos (máximo 5 por registro)
+			int intentosActuales = pendingUser.getIntentosReenvio() != null ? pendingUser.getIntentosReenvio() : 0;
+			if (intentosActuales >= 5) {
+				pendingUserRepository.delete(pendingUser);
+				throw new UserException("Has alcanzado el límite máximo de reenvíos de código. Debes iniciar el proceso de registro nuevamente.");
+			}
+
+			// Verificar tiempo entre reenvíos (mínimo 2 minutos)
+			if (pendingUser.getUltimoReenvio() != null) {
+				long minutosDesdeUltimoReenvio = java.time.Duration.between(pendingUser.getUltimoReenvio(), ahora).toMinutes();
+				if (minutosDesdeUltimoReenvio < 2) {
+					long minutosRestantes = 2 - minutosDesdeUltimoReenvio;
+					throw new UserException("Debes esperar " + minutosRestantes + " minutos antes de solicitar un nuevo código.");
+				}
+			}
+
+			// Generar nuevo código
+			String nuevoCodigo = String.format("%04d", new Random().nextInt(10000));
+			
+			// Actualizar datos
+			pendingUser.setVerificationCode(nuevoCodigo);
+			pendingUser.setExpiryDate(ahora.plusMinutes(15));
+			pendingUser.setIntentosReenvio(intentosActuales + 1);
+			pendingUser.setUltimoReenvio(ahora);
+			
+			// Guardar cambios
+			pendingUserRepository.save(pendingUser);
+			
+			// Enviar nuevo código
+			emailService.sendVerificationCodeResend(pendingUser.getEmail(), nuevoCodigo, pendingUser.getIntentosReenvio());
+			
+			System.out.println("[AuthenticationService] Código reenviado a: " + email + " (Intento #" + pendingUser.getIntentosReenvio() + ")");
 		}
-
-		// Verificar límite de reenvíos (máximo 5 por registro)
-		if (pendingUser.getIntentosReenvio() != null && pendingUser.getIntentosReenvio() >= 5) {
-			throw new UserException("Has alcanzado el límite máximo de reenvíos de código. Debes iniciar el proceso de registro nuevamente.");
-		}
-
-		// Verificar tiempo entre reenvíos (mínimo 2 minutos)
-		if (pendingUser.getUltimoReenvio() != null && 
-			pendingUser.getUltimoReenvio().isAfter(LocalDateTime.now().minusMinutes(2))) {
-			long minutosRestantes = java.time.Duration.between(LocalDateTime.now(), 
-				pendingUser.getUltimoReenvio().plusMinutes(2)).toMinutes();
-			throw new UserException("Debes esperar " + (minutosRestantes + 1) + " minutos antes de solicitar un nuevo código.");
-		}
-
-		// Generar nuevo código
-		String nuevoCodigo = String.format("%04d", new Random().nextInt(10000));
-		
-		// Actualizar datos
-		pendingUser.setVerificationCode(nuevoCodigo);
-		pendingUser.setExpiryDate(LocalDateTime.now().plusMinutes(15));
-		pendingUser.setIntentosReenvio(pendingUser.getIntentosReenvio() != null ? 
-		pendingUser.getIntentosReenvio() + 1 : 1);
-		pendingUser.setUltimoReenvio(LocalDateTime.now());
-		
-		// Guardar cambios
-		pendingUserRepository.save(pendingUser);
-		
-		// Enviar nuevo código
-		emailService.sendVerificationCodeResend(pendingUser.getEmail(), nuevoCodigo, 
-        pendingUser.getIntentosReenvio());
-		
-		System.out.println("[AuthenticationService] Código reenviado a: " + email + 
-			" (Intento #" + pendingUser.getIntentosReenvio() + ")");
-	}
 
 
         public boolean emailExists(String email) {

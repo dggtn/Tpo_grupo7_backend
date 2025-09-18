@@ -69,21 +69,22 @@ public class AuthenticationController {
         }
   }
 
-   @PostMapping("/verificar-email-pendiente")
-   public ResponseEntity<ResponseData<String>> verificarEmailPendiente(@RequestBody VerificarEmailRequest request) {
+    @PostMapping("/verificar-email-pendiente")
+    public ResponseEntity<ResponseData<String>> verificarEmailPendiente(@RequestBody VerificarEmailRequest request) {
         try {
             boolean existe = authService.existeRegistroPendiente(request.getEmail());
             if (existe) {
-                return ResponseEntity.ok(ResponseData.success("Registro pendiente encontrado. Puedes solicitar un nuevo código."));
+                return ResponseEntity.ok(ResponseData.success("Registro pendiente encontrado para " + request.getEmail() + ". Puedes solicitar un nuevo código."));
             } else {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ResponseData.error("No hay registro pendiente para este email."));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST) // Cambiar a BAD_REQUEST
+                    .body(ResponseData.error("No se encontró un registro pendiente para " + request.getEmail() + ". Puedes iniciar un nuevo registro."));
             }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseData.error("Error al verificar el email: " + e.getMessage()));
         }
     }
+
 
   @Operation(summary = "Autenticar usuario", description = "Permite iniciar sesión a un usuario registrado")
   @ApiResponses(value = {
