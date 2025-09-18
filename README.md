@@ -54,7 +54,7 @@
 
  ## Aclaración importante:
  
-    A la hora de usar updateUser, se puede actualizar todos los datos, menos el password y el username, que por default queda como el email, ya que tanto el registro como la autenticacion piden el email y no el username. la configuracion del token y los permisos tuvieron que ajustarse asi.
+    A la hora de usar updateUser, se pueden actualizar todos los datos, menos el password y el username, que por default queda como el email, ya que tanto el registro como la autenticacion piden el email y no el username. La configuracion del token y los permisos tuvieron que ajustarse asi.
 
  # # Para hacer correr el backend con MySQL:
  
