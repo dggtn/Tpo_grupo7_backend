@@ -61,13 +61,19 @@ public class User implements UserDetails{
 
 
     public void updateData(User newUser){
-        setUsername(newUser.getUsername());
+    
         setFirstName(newUser.getFirstName());
         setLastName(newUser.getLastName());
         setEmail(newUser.getEmail());
         setAge(newUser.getAge());
         setAddress(newUser.getAddress());
         setUrlAvatar(newUser.getUrlAvatar());
+    }
+
+    @Override
+    public String getUsername() {
+        // IMPORTANTE: Retornar el email como username para consistency
+        return email;
     }
 
     @Override

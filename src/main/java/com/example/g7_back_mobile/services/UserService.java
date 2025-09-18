@@ -49,13 +49,11 @@ public class UserService {
 
     @Transactional
     public User createUser(RegisterRequest request) {
-      if (userRepository.existsByUsername(request.getUsername())) {
-			  throw new UserException("El nombre de usuario '" + request.getUsername() + "' ya está en uso.");
-      }
-      if (userRepository.existsByEmail(request.getEmail())) {
-        throw new UserException("El correo electrónico '" + request.getEmail() + "' ya está registrado.");
-      }
+        System.out.println("[UserService.createUser] Creando usuario con email: " + request.getEmail());
 
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email '" + request.getEmail() + "' already exists");
+        }
         User user = new User(
             null,
             request.getUsername(),

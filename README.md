@@ -1,4 +1,4 @@
- # # Endpoints en orden de prioridad segun lógica de relaciones:
+# # Endpoints en orden de prioridad segun lógica de relaciones:
 
    ## Inicializar bases de datos por default de Sedes, profesores y deportes. Pueden agregar elementos a estas listas o modificarlas en sus respectivas capas de servicio (TeacherService, HeadquarterService y CourseService). Aqui pueden agregar imagenes reales a los cursos
 
@@ -8,7 +8,8 @@
 
  3. Crear una lista de cursos: [POST] http://localhost:8080/courses/initializeCourses 
 
- 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/{courseId} 
+ 4. Asignar profes (cuantos quiera) a un curso: [PUT] http://localhost:8080/teachers/{teacherId}/
+ {courseId} 
 
  5. Asignar sedes (cuantas quiera) a un curso [PUT] http://localhost:8080/headquarters/{sedeId}/{courseId} 
 
@@ -51,6 +52,9 @@
         
                 }
 
+ ## Aclaración importante:
+ 
+    A la hora de usar updateUser, se puede actualizar todos los datos, menos el password y el username, que por default queda como el email, ya que tanto el registro como la autenticacion piden el email y no el username. la configuracion del token y los permisos tuvieron que ajustarse asi.
 
  # # Para hacer correr el backend con MySQL:
  
@@ -79,11 +83,10 @@ d) Para el envio del código al mail (y para completar el procedimiento de regis
 
  POST http://localhost:8080/auth/iniciar-registro
  
-            {
-                "username":"user",
-                "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail
-                "password":"123abc"
-            }
+        {
+            "email":"jlazartelagos@gmail.com", <--- reemplazar por tu cuenta de gmail
+            "password":"123abc"
+        }
 
 POST http://localhost:8080/auth/finalizar-registro
 
@@ -95,6 +98,6 @@ POST http://localhost:8080/auth/finalizar-registro
 POST http://localhost:8080/auth/authenticate
 
         {
-            "username":"user",  
+            "email":"jlazartelagos@gmail.com",  <--- reemplazar por tu cuenta de gmail, como en el paso anterior  
             "password": "123abc"
         }

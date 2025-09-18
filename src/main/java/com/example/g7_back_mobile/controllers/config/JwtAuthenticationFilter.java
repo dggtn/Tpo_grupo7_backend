@@ -56,14 +56,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             System.out.println("[JwtAuthenticationFilter] Token extraído: " + jwt.substring(0, Math.min(20, jwt.length())) + "...");
             
             // Extraer el email del token
-            final String username = jwtService.extractUsername(jwt);
-            System.out.println("[JwtAuthenticationFilter] Email extraído del token: " + username);
+            final String userEmail = jwtService.extractUsername(jwt);
+            System.out.println("[JwtAuthenticationFilter] Email extraído del token: " + userEmail);
             
             // Si tenemos un email válido y no hay autenticación previa
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 
                 // Cargar los detalles del usuario
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
                 System.out.println("[JwtAuthenticationFilter] Usuario cargado: " + userDetails.getUsername());
                 System.out.println("[JwtAuthenticationFilter] Authorities del usuario: " + userDetails.getAuthorities());
                 
@@ -79,12 +79,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     
                     // Establecer la autenticación en el contexto de seguridad
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    System.out.println("[JwtAuthenticationFilter] Autenticación establecida exitosamente para: " + username);
+                    System.out.println("[JwtAuthenticationFilter] Autenticación establecida exitosamente para: " + userEmail);
                 } else {
-                    System.err.println("[JwtAuthenticationFilter] Token validation failed para: " + username);
+                    System.err.println("[JwtAuthenticationFilter] Token validation failed para: " + userEmail);
                     SecurityContextHolder.clearContext();
                 }
-            } else if (username == null) {
+            } else if (userEmail == null) {
                 System.err.println("[JwtAuthenticationFilter] No se pudo extraer email del token");
                 SecurityContextHolder.clearContext();
             } else {
