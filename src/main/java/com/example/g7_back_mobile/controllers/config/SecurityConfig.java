@@ -64,9 +64,14 @@ public class SecurityConfig {
                             .requestMatchers("/courses/**").permitAll()
                             .requestMatchers("/shifts/**").permitAll()
                             
-                            // INSCRIPCIONES, RESERVAS y ASISTENCIAS REQUIEREN AUTENTICACIÓN
+                            // INSCRIPCIONES REQUIEREN AUTENTICACIÓN
                             .requestMatchers("/inscriptions/**").authenticated()
+                            
+                            // RESERVAS - TODAS REQUIEREN AUTENTICACIÓN (incluyendo cancelación)
                             .requestMatchers("/reservations/**").authenticated()
+                            .requestMatchers("/reservations/cancelar/**").authenticated()
+                            
+                            // ASISTENCIAS REQUIEREN AUTENTICACIÓN
                             .requestMatchers("/asistencias/**").authenticated()
 
                             // Default

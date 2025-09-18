@@ -65,7 +65,7 @@ public class InscriptionService {
             throw new UserException("El tiempo de reserva ha expirado.");
         }
 
-        // 3. ELIMINAR LA RESERVA Y REESTABLECER LA VACANTE
+        // 3. ELIMINAR LA RESERVA Y REESTABLECER LA VACANTE TEMPORALMENTE
         System.out.println("[InscriptionService.enrollWithReservation] Eliminando reserva y procesando inscripción...");
         Shift courseSchedule = shiftRepository.findById(reservationDTO.getIdShift())
             .orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
@@ -105,7 +105,18 @@ public class InscriptionService {
         
         Course clase = courseSchedule.getClase();
 
-        // 3. VERIFICAR SI EL USUARIO TIENE UNA RESERVA PARA ESTE TURNO Y ELIMINARLA
+        // 3. VERIFICAR QUE EL CURSO NO HAYA COMENZADO (para inscripción directa)
+        if (clase.getFechaInicio().isBefore(java.time.LocalDate.now().plusDays(1))) {
+            // Si el curso comienza hoy o ya comenzó, solo permitir si hay reserva
+            Optional<Reservation> reservaExistente = reservationRepository.findByIdUserAndIdShift(
+                reservationDTO.getIdUser(), reservationDTO.getIdShift());
+            
+            if (reservaExistente.isEmpty()) {
+                throw new IllegalStateException("No se puede inscribir directamente a un curso que ya ha comenzado o comienza hoy. Debe tener una reserva previa.");
+            }
+        }
+
+        // 4. VERIFICAR SI EL USUARIO TIENE UNA RESERVA PARA ESTE TURNO Y ELIMINARLA
         Optional<Reservation> existingReservation = reservationRepository.findByIdUserAndIdShift(
             reservationDTO.getIdUser(), reservationDTO.getIdShift());
         
@@ -121,7 +132,7 @@ public class InscriptionService {
             System.out.println("[InscriptionService.enrollUser] Reserva eliminada automáticamente durante inscripción directa");
         }
 
-        // 4. VALIDACIONES DE NEGOCIO
+        // 5. VALIDACIONES DE NEGOCIO
         if (courseSchedule.getVacancy() <= 0) {
             throw new IllegalStateException("No quedan cupos disponibles para este curso.");
         }
@@ -134,7 +145,7 @@ public class InscriptionService {
             }
         }
         
-        // 5. VALIDACIÓN DEL MÉTODO DE PAGO
+        // 6. VALIDACIÓN DEL MÉTODO DE PAGO
         if (reservationDTO.getMetodoDePago() != MetodoDePago.CREDIT_CARD && 
             reservationDTO.getMetodoDePago() != MetodoDePago.DEBIT_CARD) {
             throw new IllegalStateException("Método de pago no válido. Use CREDIT_CARD o DEBIT_CARD.");
@@ -144,7 +155,7 @@ public class InscriptionService {
         double precioCurso = clase.getPrice();
         System.out.println("[InscriptionService.enrollUser] Procesando pago por $" + precioCurso + " con método: " + reservationDTO.getMetodoDePago());
         
-        // 6. CREACIÓN DE LA INSCRIPCIÓN
+        // 7. CREACIÓN DE LA INSCRIPCIÓN
         Inscription nuevaInscripcion = Inscription.builder()
                 .user(user)
                 .shift(courseSchedule)
@@ -153,13 +164,13 @@ public class InscriptionService {
                 .build();
         Inscription savedInscripcion = inscripcionRepository.save(nuevaInscripcion);
 
-        // 7. ACTUALIZACIÓN DE VACANTES
+        // 8. ACTUALIZACIÓN DE VACANTES
         courseSchedule.setVacancy(courseSchedule.getVacancy() - 1);
         shiftRepository.save(courseSchedule);
         
         System.out.println("[InscriptionService.enrollUser] Inscripción creada con ID: " + savedInscripcion.getId());
         
-        // 8. ENVÍO DE EMAIL DE CONFIRMACIÓN
+        // 9. ENVÍO DE EMAIL DE CONFIRMACIÓN
         try {
             enviarEmailConfirmacion(user, clase, courseSchedule);
         } catch (Exception e) {
@@ -167,7 +178,7 @@ public class InscriptionService {
             // No fallar la inscripción por un error de email
         }
 
-        // 9. DEVOLVER RESPUESTA
+        // 10. DEVOLVER RESPUESTA
         return new InscripcionExitosaDTO(
                 savedInscripcion.getId(),
                 clase.getName(),

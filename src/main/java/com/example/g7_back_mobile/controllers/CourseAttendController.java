@@ -40,6 +40,14 @@ public class CourseAttendController {
             
             String mensaje = String.format("Asistencia registrada exitosamente para la fecha %s", 
                 asistencia.getFechaAsistencia());
+            
+            // Verificar si fue una inscripción automática
+            boolean esInscripcionAutomatica = asistencia.getInscripcion().getFechaInscripcion()
+                .toLocalDate().equals(asistencia.getFechaAsistencia());
+            
+            if (esInscripcionAutomatica) {
+                mensaje += ". ¡Tu reserva se convirtió automáticamente en inscripción!";
+            }
                 
             return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseData.success(mensaje));
@@ -93,9 +101,10 @@ public class CourseAttendController {
                 return ResponseEntity.badRequest().build();
             }
             
+            // El QR contiene el ID del shift para facilitar el registro de asistencia
             String qrContent = String.valueOf(shiftId);
             QRCodeWriter qrCodeWriter = new QRCodeWriter();
-            BitMatrix bitMatrix = qrCodeWriter.encode(qrContent, BarcodeFormat.QR_CODE, 250, 250);
+            BitMatrix bitMatrix = qrCodeWriter.encode(qrContent, BarcodeFormat.QR_CODE, 300, 300);
 
             ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(bitMatrix, "PNG", pngOutputStream);
@@ -111,6 +120,24 @@ public class CourseAttendController {
             System.err.println("[CourseAttendController.generateQrCode] Error generando QR: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PostMapping("/registrar_con_qr")
+    public ResponseEntity<ResponseData<?>> registrarAsistenciaConQR(@RequestBody Long shiftId) {
+        try {
+            System.out.println("[CourseAttendController.registrarAsistenciaConQR] Registro via QR para shift: " + shiftId);
+            
+            // Por ahora retornamos el shift ID para que el frontend maneje el registro
+            // En una implementación más completa, aquí podríamos obtener el usuario autenticado
+            // y crear el DTO automáticamente
+            
+            return ResponseEntity.ok(ResponseData.success("QR escaneado exitosamente. Shift ID: " + shiftId));
+            
+        } catch (Exception e) {
+            System.err.println("[CourseAttendController.registrarAsistenciaConQR] Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error procesando el código QR"));
         }
     }
 }
