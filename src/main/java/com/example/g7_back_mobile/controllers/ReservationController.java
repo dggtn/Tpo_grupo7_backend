@@ -22,6 +22,7 @@ import com.example.g7_back_mobile.repositories.entities.User;
 import com.example.g7_back_mobile.services.ReserveService;
 import com.example.g7_back_mobile.services.UserService;
 import com.example.g7_back_mobile.services.exceptions.UserException;
+import com.example.g7_back_mobile.repositories.entities.MetodoDePago;
 
 @RestController
 @RequestMapping("/reservations")
@@ -57,36 +58,58 @@ public class ReservationController {
         }
     }
 
-    @PostMapping("/reservar")
-    public ResponseEntity<ResponseData<?>> reserveCourse(@RequestBody ReservationDTO reservationDTO) {
-        try {
-            System.out.println("[ReservationController.reserveCourse] Procesando nueva reserva: " + reservationDTO);
-            
-            // Validaciones básicas
-            if (reservationDTO.getIdUser() == null) {
-                return ResponseEntity.badRequest()
-                    .body(ResponseData.error("El ID del usuario es obligatorio."));
-            }
-            
-            if (reservationDTO.getIdShift() == null) {
-                return ResponseEntity.badRequest()
-                    .body(ResponseData.error("El ID del turno es obligatorio."));
-            }
+	@PostMapping("/reservar")
+	public ResponseEntity<ResponseData<?>> reserveCourse(
+			@RequestBody ReservationDTO reservationDTO,
+			@AuthenticationPrincipal UserDetails userDetails) {
+		try {
+			System.out.println("[ReservationController.reserveCourse] Procesando nueva reserva: " + reservationDTO);
+	
+			// 1) Validar shiftId (lo único que debe venir del body)
+			if (reservationDTO.getIdShift() == null) {
+				return ResponseEntity.badRequest()
+					.body(ResponseData.error("El ID del turno es obligatorio."));
+			}
+	
+			// 2) Obtener el usuario autenticado desde el JWT
+			if (userDetails == null) {
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+					.body(ResponseData.error("No autenticado"));
+			}
+	
+			// En tu proyecto el username del token es el email:
+			User authUser = userService.getUserByEmail(userDetails.getUsername());
+			if (authUser == null) {
+				return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+					.body(ResponseData.error("Usuario no encontrado"));
+			}
+	
+			// 3) Forzar el idUser desde el contexto (ignorar lo que venga en el body)
+			reservationDTO.setIdUser(authUser.getId());
+	
+			// (Opcional) valor por defecto para método de pago si es requerido por la lógica
+			if (reservationDTO.getMetodoDePago() == null) {
+				reservationDTO.setMetodoDePago(MetodoDePago.DEBIT_CARD); 
+			}
+	
+			// 4) Ejecutar la reserva
+			reservationService.reserveClass(reservationDTO);
+	
+			System.out.println("[ReservationController.reserveCourse] Reserva creada exitosamente");
+			return ResponseEntity.status(HttpStatus.CREATED)
+				.body(ResponseData.success("Curso reservado exitosamente! La reserva expira 1 hora antes de la primera clase."));
+	
+		} catch (IllegalStateException | IllegalArgumentException e) {
+			System.err.println("[ReservationController.reserveCourse] Error de validación: " + e.getMessage());
+			return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
+		} catch (Exception e) {
+			System.err.println("[ReservationController.reserveCourse] Error inesperado: " + e.getMessage());
+			e.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+				.body(ResponseData.error("Ocurrió un error inesperado al reservar el curso."));
+		}
+	}
 
-            reservationService.reserveClass(reservationDTO);
-            
-            System.out.println("[ReservationController.reserveCourse] Reserva creada exitosamente");
-            return ResponseEntity.status(HttpStatus.CREATED).body(ResponseData.success("Curso reservado exitosamente! La reserva expira 1 hora antes de la primera clase."));
-            
-        } catch (IllegalStateException | IllegalArgumentException e) {
-            System.err.println("[ReservationController.reserveCourse] Error de validación: " + e.getMessage());
-            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
-        } catch (Exception e) {
-            System.err.println("[ReservationController.reserveCourse] Error inesperado: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("Ocurrió un error inesperado al reservar el curso."));
-        }
-    }
 
     @DeleteMapping("/cancelar/{shiftId}")
     public ResponseEntity<ResponseData<?>> cancelReservation(
@@ -148,4 +171,28 @@ public class ReservationController {
                 .body(ResponseData.error("Error procesando la cancelación."));
         }
     }
+	
+	@GetMapping("/status")
+	public ResponseEntity<ResponseData<?>> getUserReservationsStatus(
+        @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+    try {
+        System.out.println("[ReservationController.getUserReservationsStatus] user=" + userDetails.getUsername());
+
+        com.example.g7_back_mobile.repositories.entities.User authUser =
+                userService.getUserByEmail(userDetails.getUsername());
+
+        // usar el método ya existente en el service:
+        List<com.example.g7_back_mobile.controllers.dtos.ReservationStatusDTO> list =
+                reservationService.getUserReservationsWithStatus(authUser.getId());
+
+        return ResponseEntity.ok(ResponseData.success(list));
+    } catch (com.example.g7_back_mobile.services.exceptions.UserException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("No se pudieron obtener las próximas reservas."));
+    }
+}
+
 }

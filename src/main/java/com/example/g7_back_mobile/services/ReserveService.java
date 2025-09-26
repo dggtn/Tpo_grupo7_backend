@@ -4,6 +4,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -19,7 +20,7 @@ import com.example.g7_back_mobile.repositories.entities.Course;
 import com.example.g7_back_mobile.repositories.entities.Reservation;
 import com.example.g7_back_mobile.repositories.entities.Shift;
 import com.example.g7_back_mobile.repositories.entities.User;
-
+import com.example.g7_back_mobile.repositories.entities.EstadoReserva;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -46,78 +47,86 @@ public class ReserveService {
     /**
      * Obtiene las reservas del usuario con información de estado adicional
      */
-    public List<ReservationStatusDTO> getUserReservationsWithStatus(Long userId) throws Exception {
-        try {
-            List<Reservation> reservations = reservationRepository.findByIdUser(userId);
-            
-            return reservations.stream().map(reservation -> {
-                try {
-                    Shift shift = shiftRepository.findById(reservation.getIdShift()).orElse(null);
-                    if (shift == null) return null;
-                    
-                    ReservationStatusDTO statusDTO = new ReservationStatusDTO();
-                    statusDTO.setReservationId(reservation.getId());
-                    statusDTO.setNombreCurso(shift.getClase().getName());
-                    statusDTO.setDiaClase(obtenerNombreDia(shift.getDiaEnQueSeDicta()));
-                    statusDTO.setHoraClase(shift.getHoraInicio());
-                    statusDTO.setFechaExpiracion(reservation.getExpiryDate());
-                    statusDTO.calcularEstadoCancelacion();
-                    
-                    return statusDTO;
-                } catch (Exception e) {
-                    System.err.println("[ReserveService.getUserReservationsWithStatus] Error procesando reserva: " + e.getMessage());
-                    return null;
-                }
-            })
-            .filter(dto -> dto != null)
-            .toList();
-            
-        } catch (Exception error) {
-            throw new Exception("[ReserveService.getUserReservationsWithStatus] -> " + error.getMessage());
-        }
-    }
+	public List<ReservationStatusDTO> getUserReservationsWithStatus(Long userId) throws Exception {
+		try {
+			List<Reservation> reservations = reservationRepository.findByIdUser(userId);
+	
+			return reservations.stream().map(reservation -> {
+				try {
+					Shift shift = shiftRepository.findById(reservation.getIdShift()).orElse(null);
+					if (shift == null) return null;
+	
+					ReservationStatusDTO dto = new ReservationStatusDTO();
+					dto.setReservationId(reservation.getId());
+					dto.setShiftId(reservation.getIdShift());                     
+					dto.setNombreCurso(shift.getClase().getName());
+					dto.setDiaClase(obtenerNombreDia(shift.getDiaEnQueSeDicta()));
+					dto.setHoraClase(shift.getHoraInicio());
+					dto.setFechaExpiracion(reservation.getExpiryDate());
+					
+					// Estado y cancelable
+					dto.setEstadoReserva(reservation.getStatus().name());          
+
+					ZoneId zone = ZoneId.of("America/Argentina/Buenos_Aires");
+					LocalDateTime next = calcularProximaOcurrenciaDesdeAhora(shift, zone);
+					LocalDateTime limite = next.minusHours(1);
+					boolean cancelable = reservation.getStatus() == EstadoReserva.ACTIVA
+							&& LocalDateTime.now(zone).isBefore(limite);
+					dto.setCancelable(cancelable);					
+	
+					return dto;
+				} catch (Exception e) {
+					System.err.println("[ReserveService.getUserReservationsWithStatus] error: " + e.getMessage());
+					return null;
+				}
+			}).filter(x -> x != null).toList();
+	
+		} catch (Exception error) {
+			throw new Exception("[ReserveService.getUserReservationsWithStatus] -> " + error.getMessage());
+		}
+	}
+
     
-    @Transactional
-    public void cancelReservation(Long userId, Long shiftId) {
-        System.out.println("[ReserveService.cancelReservation] Cancelando reserva para usuario: " + userId + ", shift: " + shiftId);
-        
-        // 1. VERIFICAR QUE EL USUARIO EXISTE
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + userId));
-        
-        // 2. VERIFICAR QUE EL SHIFT EXISTE
-        Shift shift = shiftRepository.findById(shiftId)
-            .orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + shiftId));
-        
-        // 3. BUSCAR LA RESERVA
-        Reservation reservation = reservationRepository.findByIdUserAndIdShift(userId, shiftId)
-            .orElseThrow(() -> new IllegalArgumentException("No se encontró una reserva activa para este usuario y cronograma."));
-        
-        // 4. VERIFICAR QUE AÚN SE PUEDE CANCELAR (1 hora antes de la primera clase)
-        LocalDateTime tiempoLimiteCancelacion = calcularTiempoLimiteReserva(shift);
-        LocalDateTime ahora = LocalDateTime.now();
-        
-        if (ahora.isAfter(tiempoLimiteCancelacion)) {
-            throw new IllegalStateException("Ya no es posible cancelar la reserva. El límite de cancelación ha expirado (1 hora antes de la primera clase).");
-        }
-        
-        // 5. ELIMINAR LA RESERVA
-        reservationRepository.delete(reservation);
-        
-        // 6. RESTAURAR LA VACANTE
-        shift.setVacancy(shift.getVacancy() + 1);
-        shiftRepository.save(shift);
-        
-        System.out.println("[ReserveService.cancelReservation] Reserva cancelada exitosamente. Vacante restaurada.");
-        
-        // 7. ENVIAR EMAIL DE CONFIRMACIÓN DE CANCELACIÓN
-        try {
-            enviarEmailCancelacionReserva(user, shift.getClase(), shift);
-        } catch (Exception e) {
-            System.err.println("[ReserveService.cancelReservation] Error enviando email de cancelación: " + e.getMessage());
-            // No fallar la cancelación por un error de email
-        }
-    }
+	@Transactional
+	public void cancelReservation(Long userId, Long shiftId) {
+		System.out.println("[ReserveService.cancelReservation] Cancelando reserva para usuario: " + userId + ", shift: " + shiftId);
+	
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado con ID: " + userId));
+	
+		Shift shift = shiftRepository.findById(shiftId)
+			.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + shiftId));
+	
+		Reservation reservation = reservationRepository.findByIdUserAndIdShift(userId, shiftId)
+			.orElseThrow(() -> new IllegalArgumentException("No se encontró una reserva activa para este usuario y cronograma."));
+	
+		java.time.ZoneId zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires");
+		LocalDateTime next = calcularProximaOcurrenciaDesdeAhora(shift, zone);
+		LocalDateTime tiempoLimiteCancelacion = next.minusHours(1);
+		
+		if (!LocalDateTime.now(zone).isBefore(tiempoLimiteCancelacion)) {
+			throw new IllegalStateException("Ya no es posible cancelar la reserva (límite: 1h antes de la próxima clase).");
+		}
+		
+	
+		if (reservation.getStatus() == EstadoReserva.CANCELADA) {
+			throw new IllegalStateException("La reserva ya está cancelada.");
+		}
+		if (reservation.getStatus() == EstadoReserva.EXPIRADA) {
+			throw new IllegalStateException("La reserva está expirada y no puede cancelarse.");
+		}
+	
+		// Marcar cancelada y restaurar vacante
+		reservation.setStatus(EstadoReserva.CANCELADA);
+		reservationRepository.save(reservation);
+	
+		shift.setVacancy(shift.getVacancy() + 1);
+		shiftRepository.save(shift);
+	
+		System.out.println("[ReserveService.cancelReservation] Reserva cancelada (status=CANCELADA)");
+		try { enviarEmailCancelacionReserva(user, shift.getClase(), shift); } catch (Exception ignored) {}
+	}
+
     
     @Transactional
 	public void reserveClass(ReservationDTO reservationDTO){
@@ -130,21 +139,31 @@ public class ReserveService {
 		Shift courseSchedule = shiftRepository.findById(reservationDTO.getIdShift())
 				.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
 
-		// 2. VERIFICAR QUE EL CURSO NO HAYA COMENZADO
-        LocalDate fechaInicioCurso = courseSchedule.getClase().getFechaInicio();
-        LocalDate hoy = LocalDate.now();
-        
-        if (hoy.isAfter(fechaInicioCurso)) {
-            throw new IllegalStateException("No se puede reservar un curso que ya ha comenzado.");
-        }
+		// 2. CALCULAR PRÓXIMA OCURRENCIA DEL SHIFT DESDE "AHORA"
+		java.time.ZoneId zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires");
+		java.time.LocalDateTime now = java.time.LocalDateTime.now(zone);
+		
+		java.time.LocalDateTime nextOccurrence = calcularProximaOcurrenciaDesdeAhora(courseSchedule, zone);
+		
+		// Validar que la próxima ocurrencia esté dentro del rango del curso
+		java.time.LocalDate fechaInicioCurso = courseSchedule.getClase().getFechaInicio();
+		java.time.LocalDate fechaFinCurso   = courseSchedule.getClase().getFechaFin(); // puede ser null
+		
+		if (nextOccurrence.toLocalDate().isBefore(fechaInicioCurso)) {
+			throw new IllegalStateException("La próxima clase aún no entra en el rango del curso.");
+		}
+		if (fechaFinCurso != null && nextOccurrence.toLocalDate().isAfter(fechaFinCurso)) {
+			throw new IllegalStateException("El curso ya finalizó. No hay próximas clases disponibles.");
+		}
+		
+		// 3. TIEMPO LÍMITE: 1h antes de ESA próxima ocurrencia
+		java.time.LocalDateTime tiempoLimiteReserva = nextOccurrence.minusHours(1);
+		
+		// Chequear que falte al menos 1 hora
+		if (!now.isBefore(tiempoLimiteReserva)) {
+			throw new IllegalStateException("El tiempo límite para reservar esta clase expiró (1 hora antes del inicio).");
+		}
 
-        // 3. CALCULAR TIEMPO LÍMITE DE RESERVA (1 hora antes de la primera clase)
-        LocalDateTime tiempoLimiteReserva = calcularTiempoLimiteReserva(courseSchedule);
-        LocalDateTime ahora = LocalDateTime.now();
-        
-        if (ahora.isAfter(tiempoLimiteReserva)) {
-            throw new IllegalStateException("El tiempo límite para reservar ha expirado. Solo se puede reservar hasta 1 hora antes del inicio de la primera clase.");
-        }
 
 		// 4. VALIDACIONES DE NEGOCIO
 		if (courseSchedule.getVacancy() <= 0) {
@@ -169,10 +188,12 @@ public class ReserveService {
 		Reservation nuevaReservation = Reservation.builder()
 				.idUser(user.getId())
 				.idShift(courseSchedule.getId())
-				.expiryDate(tiempoLimiteReserva) // Expira 1 hora antes de la primera clase
+				.expiryDate(tiempoLimiteReserva)
+				.status(EstadoReserva.ACTIVA) 
 				.build();
 		
 		reservationRepository.save(nuevaReservation);
+		
 
 		// 6. ACTUALIZACIÓN DE VACANTES
 		courseSchedule.setVacancy(courseSchedule.getVacancy() - 1);
@@ -223,37 +244,32 @@ public class ReserveService {
     /**
      * Tarea programada que se ejecuta cada hora para limpiar reservas expiradas
      */
-    @Scheduled(fixedRate = 3600000) // Cada 1 hora
-    @Transactional
-    public void cleanupExpiredReservations() {
-        try {
-            System.out.println("[ReserveService.cleanupExpiredReservations] Iniciando limpieza de reservas expiradas...");
-            
-            LocalDateTime now = LocalDateTime.now();
-            List<Reservation> expiredReservations = reservationRepository.findByExpiryDateBefore(now);
-            
-            for (Reservation reservation : expiredReservations) {
-                // Restaurar vacante
-                Shift shift = shiftRepository.findById(reservation.getIdShift()).orElse(null);
-                if (shift != null) {
-                    shift.setVacancy(shift.getVacancy() + 1);
-                    shiftRepository.save(shift);
-                    System.out.println("[ReserveService.cleanupExpiredReservations] Vacante restaurada para shift ID: " + shift.getId());
-                }
-                
-                // Eliminar reserva
-                reservationRepository.delete(reservation);
-                System.out.println("[ReserveService.cleanupExpiredReservations] Reserva expirada eliminada: " + reservation.getId());
-            }
-            
-            if (expiredReservations.size() > 0) {
-                System.out.println("[ReserveService.cleanupExpiredReservations] Se limpiaron " + expiredReservations.size() + " reservas expiradas");
-            }
-            
-        } catch (Exception e) {
-            System.err.println("[ReserveService.cleanupExpiredReservations] Error durante limpieza: " + e.getMessage());
-        }
-    }
+	@Scheduled(fixedRate = 3600000)
+	@Transactional
+	public void cleanupExpiredReservations() {
+		try {
+			System.out.println("[ReserveService.cleanupExpiredReservations] Iniciando limpieza...");
+			LocalDateTime now = LocalDateTime.now();
+			List<Reservation> expiredReservations = reservationRepository.findByExpiryDateBefore(now);
+	
+			for (Reservation reservation : expiredReservations) {
+				if (reservation.getStatus() == EstadoReserva.ACTIVA) {
+					reservation.setStatus(EstadoReserva.EXPIRADA);
+					reservationRepository.save(reservation);
+	
+					Shift shift = shiftRepository.findById(reservation.getIdShift()).orElse(null);
+					if (shift != null) {
+						shift.setVacancy(shift.getVacancy() + 1);
+						shiftRepository.save(shift);
+					}
+					System.out.println("[ReserveService.cleanupExpiredReservations] Marcada EXPIRADA: " + reservation.getId());
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("[ReserveService.cleanupExpiredReservations] Error: " + e.getMessage());
+		}
+	}
+
     /**
      * Convierte un número de día (1-7) a su nombre correspondiente
      */
@@ -301,5 +317,38 @@ public class ReserveService {
             throw e;
         }
     }
+	
+		/**
+	* Calcula la próxima ocurrencia del shift (día/horario) a partir de "ahora".
+	* Si hoy es el día y la hora ya pasó, salta a la semana siguiente.
+	*/
+	private LocalDateTime calcularProximaOcurrenciaDesdeAhora(Shift shift, java.time.ZoneId zone) {
+		LocalDateTime now = LocalDateTime.now(zone);
+	
+		// 1..7 (1=Lunes .. 7=Domingo) según tu modelo
+		DayOfWeek targetDow = DayOfWeek.of(shift.getDiaEnQueSeDicta());
+	
+		// horaInicio formateada "HH:mm"
+		LocalTime startTime = LocalTime.parse(shift.getHoraInicio());
+	
+		LocalDate today = now.toLocalDate();
+		LocalDate next = nextOrSame(today, targetDow);
+		LocalDateTime startAt = LocalDateTime.of(next, startTime);
+	
+		// si hoy es el día pero la hora ya pasó -> próxima semana
+		if (!startAt.isAfter(now)) {
+			startAt = startAt.plusWeeks(1);
+		}
+		return startAt;
+	}
+	
+	/** nextOrSame sin TemporalAdjusters (para Java 8/11 sin imports extra) */
+	private LocalDate nextOrSame(LocalDate date, DayOfWeek target) {
+		DayOfWeek d = date.getDayOfWeek();
+		int diff = target.getValue() - d.getValue();
+		if (diff < 0) diff += 7;
+		return date.plusDays(diff);
+	}
+
 
 }

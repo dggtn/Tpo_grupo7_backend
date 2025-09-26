@@ -12,6 +12,7 @@ public class ReservationStatusDTO {
     
     private Long reservationId;
     private String nombreCurso;
+	private Long shiftId;
     private String diaClase;
     private String horaClase;
     private LocalDateTime fechaExpiracion;
@@ -19,8 +20,9 @@ public class ReservationStatusDTO {
     private boolean puedeCancelarse;
     private long minutosParaExpirar;
     private long minutosParaPrimeraClase;
-    private String estadoReserva; // ACTIVA, PROXIMA_A_EXPIRAR, EXPIRADA
-    
+    private String estadoReserva;         
+    private boolean cancelable; 
+	
     public ReservationStatusDTO(ReservationDTO reservation) {
         this.reservationId = reservation.getId();
         // Aquí se pueden agregar más campos calculados

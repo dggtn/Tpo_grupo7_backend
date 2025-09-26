@@ -67,5 +67,28 @@ public class UserController {
                     .body(ResponseData.error("No se pudieron obtener los usuarios"));
         }
     }
+	
+	@GetMapping("/me")
+	public ResponseEntity<ResponseData<?>> me(@AuthenticationPrincipal UserDetails userDetails) {
+    try {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ResponseData.error("No autenticado"));
+        }
+
+        // IMPORTANTE: en tu app el subject del JWT es el email.
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ResponseData.error("Usuario no encontrado"));
+        }
+
+        UserDTO dto = user.toDTO();
+        return ResponseEntity.ok(ResponseData.success(dto));
+    } catch (Exception e) {
+        System.out.printf("[UserController.me] -> %s%n", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("No se pudo obtener el usuario actual"));
+    }
+}
+
 
 }
