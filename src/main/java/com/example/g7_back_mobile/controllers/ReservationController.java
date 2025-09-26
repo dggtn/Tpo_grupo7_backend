@@ -171,4 +171,28 @@ public class ReservationController {
                 .body(ResponseData.error("Error procesando la cancelación."));
         }
     }
+	
+	@GetMapping("/status")
+	public ResponseEntity<ResponseData<?>> getUserReservationsStatus(
+        @AuthenticationPrincipal org.springframework.security.core.userdetails.UserDetails userDetails) {
+    try {
+        System.out.println("[ReservationController.getUserReservationsStatus] user=" + userDetails.getUsername());
+
+        com.example.g7_back_mobile.repositories.entities.User authUser =
+                userService.getUserByEmail(userDetails.getUsername());
+
+        // usar el método ya existente en el service:
+        List<com.example.g7_back_mobile.controllers.dtos.ReservationStatusDTO> list =
+                reservationService.getUserReservationsWithStatus(authUser.getId());
+
+        return ResponseEntity.ok(ResponseData.success(list));
+    } catch (com.example.g7_back_mobile.services.exceptions.UserException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ResponseData.error(e.getMessage()));
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("No se pudieron obtener las próximas reservas."));
+    }
+}
+
 }
