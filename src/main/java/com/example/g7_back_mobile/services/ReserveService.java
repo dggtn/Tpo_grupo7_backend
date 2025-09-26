@@ -130,21 +130,31 @@ public class ReserveService {
 		Shift courseSchedule = shiftRepository.findById(reservationDTO.getIdShift())
 				.orElseThrow(() -> new IllegalArgumentException("Cronograma no encontrado con ID: " + reservationDTO.getIdShift()));
 
-		// 2. VERIFICAR QUE EL CURSO NO HAYA COMENZADO
-        LocalDate fechaInicioCurso = courseSchedule.getClase().getFechaInicio();
-        LocalDate hoy = LocalDate.now();
-        
-        if (hoy.isAfter(fechaInicioCurso)) {
-            throw new IllegalStateException("No se puede reservar un curso que ya ha comenzado.");
-        }
+		// 2. CALCULAR PRÓXIMA OCURRENCIA DEL SHIFT DESDE "AHORA"
+		java.time.ZoneId zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires");
+		java.time.LocalDateTime now = java.time.LocalDateTime.now(zone);
+		
+		java.time.LocalDateTime nextOccurrence = calcularProximaOcurrenciaDesdeAhora(courseSchedule, zone);
+		
+		// Validar que la próxima ocurrencia esté dentro del rango del curso
+		java.time.LocalDate fechaInicioCurso = courseSchedule.getClase().getFechaInicio();
+		java.time.LocalDate fechaFinCurso   = courseSchedule.getClase().getFechaFin(); // puede ser null
+		
+		if (nextOccurrence.toLocalDate().isBefore(fechaInicioCurso)) {
+			throw new IllegalStateException("La próxima clase aún no entra en el rango del curso.");
+		}
+		if (fechaFinCurso != null && nextOccurrence.toLocalDate().isAfter(fechaFinCurso)) {
+			throw new IllegalStateException("El curso ya finalizó. No hay próximas clases disponibles.");
+		}
+		
+		// 3. TIEMPO LÍMITE: 1h antes de ESA próxima ocurrencia
+		java.time.LocalDateTime tiempoLimiteReserva = nextOccurrence.minusHours(1);
+		
+		// Chequear que falte al menos 1 hora
+		if (!now.isBefore(tiempoLimiteReserva)) {
+			throw new IllegalStateException("El tiempo límite para reservar esta clase expiró (1 hora antes del inicio).");
+		}
 
-        // 3. CALCULAR TIEMPO LÍMITE DE RESERVA (1 hora antes de la primera clase)
-        LocalDateTime tiempoLimiteReserva = calcularTiempoLimiteReserva(courseSchedule);
-        LocalDateTime ahora = LocalDateTime.now();
-        
-        if (ahora.isAfter(tiempoLimiteReserva)) {
-            throw new IllegalStateException("El tiempo límite para reservar ha expirado. Solo se puede reservar hasta 1 hora antes del inicio de la primera clase.");
-        }
 
 		// 4. VALIDACIONES DE NEGOCIO
 		if (courseSchedule.getVacancy() <= 0) {
@@ -171,6 +181,7 @@ public class ReserveService {
 				.idShift(courseSchedule.getId())
 				.expiryDate(tiempoLimiteReserva) // Expira 1 hora antes de la primera clase
 				.build();
+
 		
 		reservationRepository.save(nuevaReservation);
 
@@ -301,5 +312,38 @@ public class ReserveService {
             throw e;
         }
     }
+	
+		/**
+	* Calcula la próxima ocurrencia del shift (día/horario) a partir de "ahora".
+	* Si hoy es el día y la hora ya pasó, salta a la semana siguiente.
+	*/
+	private LocalDateTime calcularProximaOcurrenciaDesdeAhora(Shift shift, java.time.ZoneId zone) {
+		LocalDateTime now = LocalDateTime.now(zone);
+	
+		// 1..7 (1=Lunes .. 7=Domingo) según tu modelo
+		DayOfWeek targetDow = DayOfWeek.of(shift.getDiaEnQueSeDicta());
+	
+		// horaInicio formateada "HH:mm"
+		LocalTime startTime = LocalTime.parse(shift.getHoraInicio());
+	
+		LocalDate today = now.toLocalDate();
+		LocalDate next = nextOrSame(today, targetDow);
+		LocalDateTime startAt = LocalDateTime.of(next, startTime);
+	
+		// si hoy es el día pero la hora ya pasó -> próxima semana
+		if (!startAt.isAfter(now)) {
+			startAt = startAt.plusWeeks(1);
+		}
+		return startAt;
+	}
+	
+	/** nextOrSame sin TemporalAdjusters (para Java 8/11 sin imports extra) */
+	private LocalDate nextOrSame(LocalDate date, DayOfWeek target) {
+		DayOfWeek d = date.getDayOfWeek();
+		int diff = target.getValue() - d.getValue();
+		if (diff < 0) diff += 7;
+		return date.plusDays(diff);
+	}
+
 
 }
