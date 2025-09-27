@@ -13,6 +13,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.example.g7_back_mobile.repositories.entities.EstadoReserva;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+
 
 @Data
 @Entity
@@ -26,17 +30,14 @@ public class Reservation {
     private Long id;
     private Long idUser;
     private Long idShift;
+    @Enumerated(EnumType.ORDINAL) 
     private MetodoDePago metodoDePago;
     private LocalDateTime expiryDate;
+    @Enumerated(EnumType.STRING)         
+    private EstadoReserva status; 
 
-    public ReservationDTO toDTO(){
-        return new ReservationDTO(
-            this.id,
-            this.idUser,
-            this.idShift,
-            this.metodoDePago,
-            this.expiryDate
-            
-        );
-    }
+	public com.example.g7_back_mobile.controllers.dtos.ReservationDTO toDTO() {
+		return com.example.g7_back_mobile.controllers.dtos.ReservationDTO.fromEntity(this);
+	}
+	
 }
