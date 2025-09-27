@@ -26,6 +26,23 @@ public class UserController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @PutMapping("/name")
+    public ResponseEntity<ResponseData<?>> actulizarNombre(@AuthenticationPrincipal UserDetails userDetails, @RequestBody UserDTO userDTO) {
+        try {
+            User authUser = userService.getUserByEmail(userDetails.getUsername());
+            authUser.setFirstName(userDTO.getFirstName());
+            User updatedUser = userService.updateUser(authUser);
+            UserDTO updatedUserDTO = updatedUser.toDTO();
+            return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(updatedUserDTO));
+        } catch (UserException error) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseData.error(error.getMessage()));
+        } catch (Exception error) {
+            System.out.printf("[UserController.updateUser] -> %s", error.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseData.error("No se pudo actualizar el usuario"));
+        }
+    }
+
     @PutMapping("/update")
     public ResponseEntity<ResponseData<?>> updateUser(@AuthenticationPrincipal UserDetails userDetails, @RequestBody UserDTO userDTO) {
         try {
@@ -67,5 +84,28 @@ public class UserController {
                     .body(ResponseData.error("No se pudieron obtener los usuarios"));
         }
     }
+	
+	@GetMapping("/me")
+	public ResponseEntity<ResponseData<?>> me(@AuthenticationPrincipal UserDetails userDetails) {
+    try {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ResponseData.error("No autenticado"));
+        }
+
+        // IMPORTANTE: en tu app el subject del JWT es el email.
+        User user = userService.getUserByEmail(userDetails.getUsername());
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ResponseData.error("Usuario no encontrado"));
+        }
+
+        UserDTO dto = user.toDTO();
+        return ResponseEntity.ok(ResponseData.success(dto));
+    } catch (Exception e) {
+        System.out.printf("[UserController.me] -> %s%n", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("No se pudo obtener el usuario actual"));
+    }
+}
+
 
 }
