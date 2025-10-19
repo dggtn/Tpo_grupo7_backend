@@ -81,7 +81,7 @@ public class SecurityConfig {
                     // CONFIGURACIÓN DE SESIÓN Y AUTENTICACIÓN
                     .sessionManagement(session -> session.sessionCreationPolicy(STATELESS))
                     .authenticationProvider(authenticationProvider)
-                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                    //.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
 
                     // MANEJO DE EXCEPCIONES CON LOGGING DETALLADO
                     .exceptionHandling(ex -> ex

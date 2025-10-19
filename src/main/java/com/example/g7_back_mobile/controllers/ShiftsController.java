@@ -1,6 +1,8 @@
 package com.example.g7_back_mobile.controllers;
 
+import com.example.g7_back_mobile.controllers.dtos.ClaseDTO;
 import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
+import com.example.g7_back_mobile.repositories.ShiftSpecification;
 import com.example.g7_back_mobile.repositories.entities.Course;
 import com.example.g7_back_mobile.repositories.entities.Shift;
 import com.example.g7_back_mobile.services.CourseService;
@@ -10,10 +12,13 @@ import com.example.g7_back_mobile.services.exceptions.UserException;
 import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
 import com.example.g7_back_mobile.controllers.dtos.ResponseData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 @RestController
@@ -24,6 +29,46 @@ public class ShiftsController {
     private ShiftService shiftService;
     @Autowired
     private CourseService courseService;
+
+    @GetMapping("")
+    public ResponseEntity<ResponseData<?>> getAll(
+            @RequestParam(value = "sede", required = false) Long sede,
+            @RequestParam(value = "tipoDeporte", required = false) Long tipoDeporte,
+            @RequestParam(value = "inicio", required = false) String horaInicio
+    ) {
+        try {
+
+            List<Specification<Shift>> specifications = new ArrayList<>();
+            if (sede != null) {
+                specifications.add(new ShiftSpecification(ShiftSpecification.Campo.SEDE, sede));
+            }
+            if (tipoDeporte != null) {
+                specifications.add(new ShiftSpecification(ShiftSpecification.Campo.TIPO_DEPORTE, tipoDeporte));
+            }
+            if (horaInicio != null) {
+                specifications.add(new ShiftSpecification(ShiftSpecification.Campo.HORA_INICIO, horaInicio));
+            }
+
+            List<Shift> clases = this.shiftService.findAll(specifications);
+
+            List<ClaseDTO> resultado = new LinkedList<>();
+            clases.forEach(shift -> {
+                ClaseDTO clase = new ClaseDTO(
+                        shift.getClase().getId(),
+                        shift.getId(),
+                        shift.getSede().getName(),
+                        shift.getClase().getName(),
+                        shift.getHoraInicio(),
+                        shift.getClase().getSportName().getSportTypeName()
+                );
+                resultado.add(clase);
+            });
+
+            return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(resultado));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ResponseData.error(e.getMessage()));
+        }
+    }
 
     @PostMapping("/shift/{courseId}/{sedeId}/{teacherId}")
     public ResponseEntity<ResponseData<?>> createCourseSchedule(
