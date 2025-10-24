@@ -115,7 +115,9 @@ public class SecurityConfig {
 			"http://10.0.2.2:8080",     // Emulador Android
 			"http://localhost:8080",     // Desarrollo local
 			"http://127.0.0.1:8080",     // Loopback
-			"http://192.168.*:*"          // Red local (wildcard)
+			"http://192.168.1.116:8081"          // Red local (wildcard)
+            //"http://192.168.100.9:8080"
+
     	));
     
     	// O usar setAllowedOriginPatterns para más flexibilidad
