@@ -17,6 +17,7 @@ import com.example.g7_back_mobile.services.exceptions.TeacherException;
 import jakarta.transaction.Transactional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -116,7 +117,18 @@ public class ShiftService {
       } catch(Exception error){
         throw new Exception("[ShiftService.findSchedByCourse] -> " + error.getMessage());
       }
-               
-    	}
+     }
 
+    public List<Shift> findAll(List<Specification<Shift>> specifications) {
+
+        Specification<Shift> specification = null;
+        if (!specifications.isEmpty()) {
+            specification = specifications.get(0);
+            for(int i = 1; i < specifications.size(); i++) {
+                specification = specification.and(specifications.get(i));
+            }
+        }
+
+        return this.shiftRepository.findAll(specification);
+    }
 }
