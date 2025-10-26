@@ -2,6 +2,7 @@ package com.example.g7_back_mobile.services;
 
 import java.util.List;
 
+import com.example.g7_back_mobile.controllers.dtos.SportDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -50,7 +51,8 @@ public class SportService {
       } catch (Exception error) {
 				throw new Exception("[Service.inicializarDeportes] -> " + error.getMessage());
 			}
-    }    
+    }
 
-    
+
+
 }
