@@ -49,7 +49,16 @@ public class SecurityConfig {
                             .requestMatchers("/v3/api-docs/**").permitAll()
                             
                             // Auth - endpoints públicos
-                            .requestMatchers("/auth/iniciar-registro", "/auth/finalizar-registro", "/auth/authenticate", "/auth/verificar-email-pendiente", "/auth/reenviar-codigo").permitAll()
+                            .requestMatchers("/auth/iniciar-registro", 
+                                            "/auth/finalizar-registro", 
+                                            "/auth/authenticate", 
+                                            "/auth/verificar-email-pendiente", 
+                                            "/auth/reenviar-codigo",
+                                            "/auth/forgot-password",       
+                                            "/auth/verify-reset-code",    
+                                            "/auth/reset-password",         
+                                            "/auth/resend-reset-code"      
+                            ).permitAll()
                             
                             // Auth - logout requiere autenticación
                             .requestMatchers("/auth/logout").authenticated()

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.g7_back_mobile.controllers.auth.AuthenticationRequest;
@@ -36,6 +37,8 @@ public class AuthenticationService {
         private UserService userService;
         @Autowired
         private final EmailService emailService;
+		@Autowired
+    	private PasswordEncoder passwordEncoder;
 
 	public boolean existeRegistroPendiente(String email) {
 		return pendingUserRepository.existsById(email);
@@ -162,7 +165,7 @@ public class AuthenticationService {
 		System.out.println("[AuthenticationService] Usuario registrado exitosamente: " + email);
 	}
 
-
+	//--------Autenticar Usuario--------
     public AuthenticationResponse authenticate(AuthenticationRequest request) throws Exception {
                 try{
                         authenticationManager.authenticate(
@@ -185,4 +188,138 @@ public class AuthenticationService {
                         throw new Exception("[AuthenticationService.authenticate] -> " + error.getMessage());
                 }
         }
+
+	//----Iniciar recuperación de contraseña----
+	
+	public void iniciarRecuperacionContrasena(String email) throws UserException {
+		System.out.println("[AuthService] Iniciando recuperación para: " + email);
+		
+		// Verificar que el usuario exista
+		User user = userRepository.findByEmail(email)
+			.orElseThrow(() -> new UserException("No existe una cuenta con el email: " + email));
+		
+		// Generar código de verificación
+		String code = String.format("%04d", new Random().nextInt(10000));
+		LocalDateTime ahora = LocalDateTime.now();
+		
+		// Crear o actualizar PendingUser para recuperación
+		PendingUser pendingReset = PendingUser.builder()
+			.email(email)
+			.verificationCode(code)
+			.expiryDate(ahora.plusMinutes(15))
+			.fechaCreacion(ahora)
+			.ultimoReenvio(ahora)
+			.intentosReenvio(0)
+			.operationType(PendingUser.OperationType.PASSWORD_RESET) // ✅ CRÍTICO
+			.build();
+		
+		pendingUserRepository.save(pendingReset);
+		
+		// Enviar email con código
+		emailService.sendPasswordResetCode(email, code, user.getFirstName());
+		
+		System.out.println("[AuthService] Código de recuperación enviado a: " + email);
+	}
+
+	
+	//----Verificar código de recuperación de contraseña----
+	
+	public void verificarCodigoRecuperacion(String email, String code) throws UserException {
+		System.out.println("[AuthService] Verificando código para: " + email);
+		
+		PendingUser pendingReset = pendingUserRepository.findById(email)
+			.orElseThrow(() -> new UserException("No se encontró una solicitud de recuperación para este email."));
+		
+		// Verificar que sea una recuperación de contraseña
+		if (pendingReset.getOperationType() != PendingUser.OperationType.PASSWORD_RESET) {
+			throw new UserException("Esta solicitud no es de recuperación de contraseña.");
+		}
+		
+		// Verificar expiración (15 minutos)
+		if (pendingReset.getExpiryDate().isBefore(LocalDateTime.now())) {
+			throw new UserException("El código de verificación ha expirado. Solicita uno nuevo.");
+		}
+    
+		// Verificar código
+		if (!pendingReset.getVerificationCode().equals(code)) {
+			throw new UserException("El código de verificación es incorrecto.");
+		}
+		
+		System.out.println("[AuthService] Código verificado exitosamente para: " + email);
+	}
+
+	//------Resetear contraseña-------
+	
+	public void resetearContrasena(String email, String code, String newPassword) throws UserException {
+		System.out.println("[AuthService] Reseteando contraseña para: " + email);
+		
+		// Verificar código nuevamente
+		verificarCodigoRecuperacion(email, code);
+		
+		// Buscar usuario
+		User user = userRepository.findByEmail(email)
+			.orElseThrow(() -> new UserException("Usuario no encontrado."));
+		
+		// Actualizar contraseña
+		user.setPassword(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
+		
+		// Limpiar solicitud de recuperación
+		pendingUserRepository.deleteById(email);
+		
+		System.out.println("[AuthService] Contraseña actualizada exitosamente para: " + email);
+	}
+
+	//----OPCIONAL: Reenviar código de recuperación de contraseña----
+
+	public void reenviarCodigoRecuperacion(String email) throws UserException {
+				System.out.println("[AuthService] Reenviando código de recuperación a: " + email);
+			
+			PendingUser pendingReset = pendingUserRepository.findById(email)
+				.orElseThrow(() -> new UserException("No se encontró una solicitud de recuperación para este email."));
+			
+			// Verificar que sea recuperación
+			if (pendingReset.getOperationType() != PendingUser.OperationType.PASSWORD_RESET) {
+				throw new UserException("Esta solicitud no es de recuperación de contraseña.");
+			}
+    
+   			 // Verificar límite de tiempo (2 minutos entre reenvíos)
+			if (pendingReset.getUltimoReenvio() != null) {
+				long minutosDesdeUltimoReenvio = java.time.Duration.between(
+					pendingReset.getUltimoReenvio(), 
+					LocalDateTime.now()
+				).toMinutes();
+				
+				if (minutosDesdeUltimoReenvio < 2) {
+					throw new UserException("Debes esperar " + (2 - minutosDesdeUltimoReenvio) + 
+						" minutos antes de solicitar un nuevo código.");
+				}
+			}
+    
+			// Verificar límite de reenvíos
+			int intentos = pendingReset.getIntentosReenvio() != null ? pendingReset.getIntentosReenvio() : 0;
+			if (intentos >= 5) {
+				pendingUserRepository.delete(pendingReset);
+				throw new UserException("Has alcanzado el límite de reenvíos. Inicia el proceso nuevamente.");
+			}
+    
+			// Generar nuevo código
+			String nuevoCodigo = String.format("%04d", new Random().nextInt(10000));
+			LocalDateTime ahora = LocalDateTime.now();
+			
+			pendingReset.setVerificationCode(nuevoCodigo);
+			pendingReset.setExpiryDate(ahora.plusMinutes(15));
+			pendingReset.setIntentosReenvio(intentos + 1);
+			pendingReset.setUltimoReenvio(ahora);
+			
+			pendingUserRepository.save(pendingReset);
+			
+			// Buscar nombre del usuario
+			User user = userRepository.findByEmail(email).orElse(null);
+			String firstName = user != null ? user.getFirstName() : null;
+			
+			emailService.sendPasswordResetCodeResend(email, nuevoCodigo, intentos + 1, firstName);
+			
+			System.out.println("[AuthService] Código reenviado a: " + email + " (Intento #" + (intentos + 1) + ")");
+		}
 }

@@ -130,4 +130,88 @@ public class AuthenticationController {
                 .body(ResponseData.error("Error al cerrar sesión"));
         }
     }
+
+    //------ Solicitar código de recuperación de contraseña ------
+  
+    @Operation(summary = "Solicitar recuperación de contraseña", 
+            description = "Envía un código de verificación al email para recuperar contraseña")
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ResponseData<String>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            authService.iniciarRecuperacionContrasena(request.getEmail());
+            return ResponseEntity.ok(
+                ResponseData.success("Código de recuperación enviado al correo. Revisa tu bandeja de entrada.")
+            );
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("[AuthController.forgotPassword] Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al procesar la solicitud: " + e.getMessage()));
+        }
+    }
+   
+    //-------Verificar código de recuperación de contraseña -------
+   
+    @Operation(summary = "Verificar código de recuperación",
+            description = "Valida el código enviado por email")
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<ResponseData<String>> verifyResetCode(@RequestBody VerifyResetCodeRequest request) {
+        try {
+            authService.verificarCodigoRecuperacion(request.getEmail(), request.getCode());
+            return ResponseEntity.ok(
+                ResponseData.success("Código verificado correctamente. Puedes proceder a cambiar tu contraseña.")
+            );
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("[AuthController.verifyResetCode] Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al verificar el código: " + e.getMessage()));
+        }
+    }
+
+     //-----Resetear contraseña------
+   
+    @Operation(summary = "Resetear contraseña",
+            description = "Cambia la contraseña del usuario tras verificar el código")
+    @PostMapping("/reset-password")
+    public ResponseEntity<ResponseData<String>> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetearContrasena(request.getEmail(), request.getCode(), request.getNewPassword());
+            return ResponseEntity.ok(
+                ResponseData.success("Contraseña actualizada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.")
+            );
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("[AuthController.resetPassword] Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al resetear la contraseña: " + e.getMessage()));
+        }
+    }
+
+    //------OPCIONAL: Reenviar código de recuperación de contraseña ------
+   
+    @Operation(summary = "Reenviar código de recuperación",
+            description = "Envía un nuevo código si el anterior expiró")
+    @PostMapping("/resend-reset-code")
+    public ResponseEntity<ResponseData<String>> resendResetCode(@RequestBody ForgotPasswordRequest request) {
+        try {
+            authService.reenviarCodigoRecuperacion(request.getEmail());
+            return ResponseEntity.ok(
+                ResponseData.success("Nuevo código de recuperación enviado al correo.")
+            );
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            System.err.println("[AuthController.resendResetCode] Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseData.error("Error al reenviar el código: " + e.getMessage()));
+        }
+    }
 }
