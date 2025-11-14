@@ -23,6 +23,7 @@ import com.example.g7_back_mobile.services.ReserveService;
 import com.example.g7_back_mobile.services.UserService;
 import com.example.g7_back_mobile.services.exceptions.UserException;
 import com.example.g7_back_mobile.repositories.entities.MetodoDePago;
+import com.example.g7_back_mobile.controllers.dtos.ReservationStatusDTO;
 
 @RestController
 @RequestMapping("/reservations")
@@ -193,6 +194,54 @@ public class ReservationController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseData.error("No se pudieron obtener las próximas reservas."));
     }
-}
+	}
+	
+	@PostMapping("/checkin/{shiftId}")
+    public ResponseEntity<ResponseData<?>> checkin(
+            @PathVariable Long shiftId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            System.out.println("[ReservationController.checkin] user=" + userDetails.getUsername()
+                    + " shiftId=" + shiftId);
+
+            User authUser = userService.getUserByEmail(userDetails.getUsername());
+
+            reservationService.checkin(authUser.getId(), shiftId);
+
+            return ResponseEntity.ok(ResponseData.success("Check-in registrado correctamente."));
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseData.error(e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseData.error("No se pudo registrar el check-in."));
+        }
+    }
+    @GetMapping("/history")
+    public ResponseEntity<ResponseData<?>> getHistory(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            System.out.println("[ReservationController.getHistory] user=" + userDetails.getUsername());
+
+            User authUser = userService.getUserByEmail(userDetails.getUsername());
+
+            List<ReservationStatusDTO> historial =
+                    reservationService.getUserHistory(authUser.getId());
+
+            return ResponseEntity.ok(ResponseData.success(historial));
+        } catch (UserException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseData.error(e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseData.error("No se pudo obtener el historial de reservas."));
+        }
+    }
+
 
 }

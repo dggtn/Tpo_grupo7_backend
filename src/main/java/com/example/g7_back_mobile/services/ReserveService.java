@@ -349,6 +349,50 @@ public class ReserveService {
 		if (diff < 0) diff += 7;
 		return date.plusDays(diff);
 	}
+	
+	public void checkin(Long userId, Long shiftId) {
+        Reservation reservation = reservationRepository
+                .findByIdUserAndIdShift(userId, shiftId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró una reserva activa para ese turno."));
 
+        // Validaciones básicas (ajustá a tu enum real)
+        if (reservation.getStatus() == EstadoReserva.CANCELADA) {
+            throw new IllegalStateException("La reserva ya fue cancelada.");
+        }
+        if (reservation.getStatus() == EstadoReserva.EXPIRADA) {
+            throw new IllegalStateException("La reserva está expirada.");
+        }
+        if (reservation.getStatus() == EstadoReserva.ASISTIO) {
+            throw new IllegalStateException("El check-in ya fue registrado.");
+        }
+
+        // Marcar como asistido
+        reservation.setStatus(EstadoReserva.ASISTIO);
+
+        // Si tu entidad tiene algún campo de fecha de asistencia, setéalo acá:
+        // reservation.setAttendanceDate(LocalDateTime.now());
+
+        reservationRepository.save(reservation);
+    }
+	
+	public List<ReservationStatusDTO> getUserHistory(Long userId) {
+    try {
+        List<ReservationStatusDTO> all = getUserReservationsWithStatus(userId);
+
+        return all.stream()
+                .filter(r -> {
+                    String estado = r.getEstadoReserva();
+                    // Ajustá los textos según como los seteás hoy
+                    return "ASISTIO".equalsIgnoreCase(estado);
+                })
+                .toList();
+    } catch (Exception e) {
+        // si querés loguear:
+        // log.error("Error obteniendo historial para userId=" + userId, e);
+        throw new RuntimeException("Error obteniendo historial de reservas para el usuario " + userId, e);
+    }
+}
 
 }
+

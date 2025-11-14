@@ -20,5 +20,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     
     // Método para encontrar reservas que expiran pronto (para notificaciones)
     List<Reservation> findByExpiryDateBetween(LocalDateTime start, LocalDateTime end);
+	
 
 }

@@ -35,6 +35,8 @@ public class Reservation {
     private LocalDateTime expiryDate;
     @Enumerated(EnumType.STRING)         
     private EstadoReserva status; 
+    private Boolean attended = false;
+    private LocalDateTime attendedAt;
 
 	public com.example.g7_back_mobile.controllers.dtos.ReservationDTO toDTO() {
 		return com.example.g7_back_mobile.controllers.dtos.ReservationDTO.fromEntity(this);
