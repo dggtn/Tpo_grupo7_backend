@@ -21,7 +21,8 @@ public class ReservationStatusDTO {
     private long minutosParaExpirar;
     private long minutosParaPrimeraClase;
     private String estadoReserva;         
-    private boolean cancelable; 
+    private boolean cancelable;
+    private ShiftRatingDto rating;
 	
     public ReservationStatusDTO(ReservationDTO reservation) {
         this.reservationId = reservation.getId();

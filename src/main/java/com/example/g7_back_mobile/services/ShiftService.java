@@ -1,14 +1,9 @@
 package com.example.g7_back_mobile.services;
 
 import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
-import com.example.g7_back_mobile.repositories.CourseRepository;
-import com.example.g7_back_mobile.repositories.HeadquarterRepository;
-import com.example.g7_back_mobile.repositories.ShiftRepository;
-import com.example.g7_back_mobile.repositories.TeacherRepository;
-import com.example.g7_back_mobile.repositories.entities.Course;
-import com.example.g7_back_mobile.repositories.entities.Headquarter;
-import com.example.g7_back_mobile.repositories.entities.Shift;
-import com.example.g7_back_mobile.repositories.entities.Teacher;
+import com.example.g7_back_mobile.controllers.dtos.ShiftRatingDto;
+import com.example.g7_back_mobile.repositories.*;
+import com.example.g7_back_mobile.repositories.entities.*;
 import com.example.g7_back_mobile.services.exceptions.CourseException;
 import com.example.g7_back_mobile.services.exceptions.HeadquarterException;
 import com.example.g7_back_mobile.services.exceptions.ShiftException;
@@ -37,6 +32,11 @@ public class ShiftService {
     @Autowired
     private TeacherRepository teacherRepository;
 
+    @Autowired
+    private ShiftRatingRepository shiftRatingRepository;
+
+    @Autowired
+    private UserService userService;
 
      public Shift updateShift(Shift shift) throws Exception {
          try {
@@ -130,5 +130,22 @@ public class ShiftService {
         }
 
         return this.shiftRepository.findAll(specification);
+    }
+
+    public ShiftRatingDto rate(RateRequest rateRequest) {
+
+         User user = userService.getUserByEmail(rateRequest.getUserEmail());
+         Shift shift = Shift.builder().id((rateRequest.getShiftId())).build();
+
+         ShiftRating shiftRating = ShiftRating.builder()
+                 .user(user)
+                 .shift(shift)
+                 .rating(rateRequest.getRating())
+                 .comment(rateRequest.getComment())
+                 .build();
+
+         shiftRatingRepository.save(shiftRating);
+
+         return ShiftRatingDto.builder().valor(shiftRating.getRating()).build();
     }
 }

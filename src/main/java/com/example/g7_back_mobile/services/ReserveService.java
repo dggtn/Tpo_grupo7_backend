@@ -6,21 +6,17 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
+
+import com.example.g7_back_mobile.controllers.dtos.ShiftRatingDto;
+import com.example.g7_back_mobile.repositories.*;
+import com.example.g7_back_mobile.repositories.entities.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.example.g7_back_mobile.controllers.dtos.ReservationDTO;
 import com.example.g7_back_mobile.controllers.dtos.ReservationStatusDTO;
-import com.example.g7_back_mobile.repositories.InscriptionRepository;
-import com.example.g7_back_mobile.repositories.ReservationRepository;
-import com.example.g7_back_mobile.repositories.ShiftRepository;
-import com.example.g7_back_mobile.repositories.UserRepository;
-import com.example.g7_back_mobile.repositories.entities.Course;
-import com.example.g7_back_mobile.repositories.entities.Reservation;
-import com.example.g7_back_mobile.repositories.entities.Shift;
-import com.example.g7_back_mobile.repositories.entities.User;
-import com.example.g7_back_mobile.repositories.entities.EstadoReserva;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -35,6 +31,8 @@ public class ReserveService {
     private InscriptionRepository inscripcionRepository;
 	@Autowired
 	private ReservationRepository reservationRepository;
+	@Autowired
+	private ShiftRatingRepository shiftRatingRepository;
 
     public List<Reservation> getUserReservations(Long userId) throws Exception {
       try {
@@ -50,11 +48,15 @@ public class ReserveService {
 	public List<ReservationStatusDTO> getUserReservationsWithStatus(Long userId) throws Exception {
 		try {
 			List<Reservation> reservations = reservationRepository.findByIdUser(userId);
-	
+
+			User user = User.builder().id(userId).build();
+
 			return reservations.stream().map(reservation -> {
 				try {
 					Shift shift = shiftRepository.findById(reservation.getIdShift()).orElse(null);
 					if (shift == null) return null;
+
+					Optional<ShiftRating> shiftRatingOptional = shiftRatingRepository.findByUserAndShift(user, shift);
 	
 					ReservationStatusDTO dto = new ReservationStatusDTO();
 					dto.setReservationId(reservation.getId());
@@ -72,7 +74,8 @@ public class ReserveService {
 					LocalDateTime limite = next.minusHours(1);
 					boolean cancelable = reservation.getStatus() == EstadoReserva.ACTIVA
 							&& LocalDateTime.now(zone).isBefore(limite);
-					dto.setCancelable(cancelable);					
+					dto.setCancelable(cancelable);
+                    shiftRatingOptional.ifPresent(shiftRating -> dto.setRating(ShiftRatingDto.builder().valor(shiftRating.getRating()).build()));
 	
 					return dto;
 				} catch (Exception e) {

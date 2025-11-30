@@ -1,20 +1,21 @@
 package com.example.g7_back_mobile.controllers;
 
-import com.example.g7_back_mobile.controllers.dtos.ClaseDTO;
-import com.example.g7_back_mobile.controllers.dtos.ShiftDTO;
+import com.example.g7_back_mobile.controllers.dtos.*;
 import com.example.g7_back_mobile.repositories.ShiftSpecification;
 import com.example.g7_back_mobile.repositories.entities.Course;
 import com.example.g7_back_mobile.repositories.entities.Shift;
 import com.example.g7_back_mobile.services.CourseService;
+import com.example.g7_back_mobile.services.RateRequest;
 import com.example.g7_back_mobile.services.ShiftService;
+import com.example.g7_back_mobile.services.UserService;
 import com.example.g7_back_mobile.services.exceptions.ShiftException;
 import com.example.g7_back_mobile.services.exceptions.UserException;
-import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
-import com.example.g7_back_mobile.controllers.dtos.ResponseData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -133,5 +134,21 @@ public class ShiftsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseData.error("No se pudo actualizar el libro"));
         }
     
+    }
+
+    @PostMapping("{id}/rating")
+    public ResponseEntity<ResponseData<?>> rate(@RequestBody RateShiftRequest request,
+                                                @PathVariable("id") Long shiftId,
+                                                @AuthenticationPrincipal UserDetails userDetails) {
+
+        RateRequest rateRequest = RateRequest.builder()
+                .userEmail(userDetails.getUsername())
+                .ShiftId(shiftId)
+                .rating(request.getRating())
+                .comment(request.getComment())
+                .build();
+
+        ShiftRatingDto response = shiftService.rate(rateRequest);
+        return ResponseEntity.status(HttpStatus.OK).body(ResponseData.success(response));
     }
 }
