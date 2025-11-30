@@ -5,7 +5,6 @@ import com.example.g7_back_mobile.repositories.ShiftSpecification;
 import com.example.g7_back_mobile.repositories.entities.Course;
 import com.example.g7_back_mobile.repositories.entities.Shift;
 import com.example.g7_back_mobile.services.CourseService;
-import com.example.g7_back_mobile.services.RateRequest;
 import com.example.g7_back_mobile.services.ShiftService;
 import com.example.g7_back_mobile.services.UserService;
 import com.example.g7_back_mobile.services.exceptions.ShiftException;

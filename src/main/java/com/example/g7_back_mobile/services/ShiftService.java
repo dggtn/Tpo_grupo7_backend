@@ -1,6 +1,7 @@
 package com.example.g7_back_mobile.services;
 
 import com.example.g7_back_mobile.controllers.dtos.CreateShiftRequest;
+import com.example.g7_back_mobile.controllers.dtos.RateRequest;
 import com.example.g7_back_mobile.controllers.dtos.ShiftRatingDto;
 import com.example.g7_back_mobile.repositories.*;
 import com.example.g7_back_mobile.repositories.entities.*;

@@ -1,4 +1,4 @@
-package com.example.g7_back_mobile.services;
+package com.example.g7_back_mobile.controllers.dtos;
 
 import lombok.Builder;
 import lombok.Data;
