@@ -36,6 +36,8 @@ public class InscriptionService {
     private ReservationRepository reservationRepository;
     @Autowired
     private EmailService emailService;
+    @Autowired
+    private UserEventService eventService; // Servicio de eventos
 
     @Transactional
     public InscripcionExitosaDTO enrollWithReservation(ReservationDTO reservationDTO) {
@@ -170,6 +172,15 @@ public class InscriptionService {
         
         System.out.println("[InscriptionService.enrollUser] Inscripción creada con ID: " + savedInscripcion.getId());
         
+        // ✅ NUEVO: GENERAR EVENTO DE INSCRIPCIÓN
+        try {
+            eventService.createEnrollmentEvent(user.getId(), clase, courseSchedule);
+            System.out.println("[InscriptionService.enrollUser] Evento de inscripción generado correctamente");
+        } catch (Exception e) {
+            System.err.println("[InscriptionService.enrollUser] Error generando evento de inscripción: " + e.getMessage());
+            // No fallar la inscripción por un error en el evento
+        }
+        
         // 9. ENVÍO DE EMAIL DE CONFIRMACIÓN
         try {
             enviarEmailConfirmacion(user, clase, courseSchedule);
@@ -186,6 +197,53 @@ public class InscriptionService {
                 savedInscripcion.getFechaInscripcion(),
                 savedInscripcion.getEstado()
         );
+    }
+    
+    /**
+     * Cancelar inscripción y generar evento
+     * Este método permite cancelar una inscripción activa y notificar al usuario
+     */
+    @Transactional
+    public void cancelInscription(Long inscriptionId, Long userId) {
+        System.out.println("[InscriptionService.cancelInscription] Cancelando inscripción ID: " + inscriptionId + " para usuario: " + userId);
+        
+        // Buscar la inscripción
+        Inscription inscription = inscripcionRepository.findById(inscriptionId)
+            .orElseThrow(() -> new IllegalArgumentException("Inscripción no encontrada con ID: " + inscriptionId));
+
+        // Verificar que el usuario sea el dueño de la inscripción
+        if (!inscription.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("No autorizado para cancelar esta inscripción. El usuario no coincide.");
+        }
+
+        // Verificar que la inscripción esté activa
+        if (!"ACTIVA".equals(inscription.getEstado())) {
+            throw new IllegalStateException("La inscripción no está activa. Estado actual: " + inscription.getEstado());
+        }
+
+        Shift shift = inscription.getShift();
+        Course course = shift.getClase();
+
+        // Cambiar estado a CANCELADA
+        inscription.setEstado("CANCELADA");
+        inscripcionRepository.save(inscription);
+
+        // Liberar vacante
+        shift.setVacancy(shift.getVacancy() + 1);
+        shiftRepository.save(shift);
+
+        System.out.println("[InscriptionService.cancelInscription] Inscripción cancelada exitosamente. Vacante liberada.");
+
+        // GENERAR EVENTO DE CANCELACIÓN
+        try {
+            eventService.createCancellationEvent(userId, course, shift, "Inscripción cancelada por el usuario");
+            System.out.println("[InscriptionService.cancelInscription] Evento de cancelación generado correctamente");
+        } catch (Exception e) {
+            System.err.println("[InscriptionService.cancelInscription] Error generando evento de cancelación: " + e.getMessage());
+            // No fallar la cancelación por un error en el evento
+        }
+
+        System.out.println("[InscriptionService.cancelInscription] Inscripción cancelada y evento generado para userId=" + userId + ", shiftId=" + shift.getId());
     }
     
     private void enviarEmailConfirmacion(User user, Course clase, Shift courseSchedule) {

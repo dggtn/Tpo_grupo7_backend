@@ -33,6 +33,8 @@ public class ReserveService {
 	private ReservationRepository reservationRepository;
 	@Autowired
 	private ShiftRatingRepository shiftRatingRepository;
+	@Autowired
+	private UserEventService eventService; // ✅ NUEVO
 
     public List<Reservation> getUserReservations(Long userId) throws Exception {
       try {
@@ -127,7 +129,18 @@ public class ReserveService {
 		shiftRepository.save(shift);
 	
 		System.out.println("[ReserveService.cancelReservation] Reserva cancelada (status=CANCELADA)");
-		try { enviarEmailCancelacionReserva(user, shift.getClase(), shift); } catch (Exception ignored) {}
+		
+		// ✅ GENERAR EVENTO DE CANCELACIÓN
+		try {
+			eventService.createCancellationEvent(userId, shift.getClase(), shift, "Reserva cancelada por el usuario");
+		} catch (Exception e) {
+			System.err.println("[ReserveService.cancelReservation] Error generando evento: " + e.getMessage());
+		}
+		
+		// Email de confirmación
+		try { 
+			enviarEmailCancelacionReserva(user, shift.getClase(), shift); 
+		} catch (Exception ignored) {}
 	}
 
     
@@ -203,6 +216,18 @@ public class ReserveService {
 		shiftRepository.save(courseSchedule);
         
         System.out.println("[ReserveService.reserveClass] Reserva creada exitosamente. Expira el: " + tiempoLimiteReserva);
+		
+		// ✅ GENERAR EVENTO DE RESERVA CONFIRMADA
+		try {
+			eventService.createReservationConfirmedEvent(
+				user.getId(), 
+				courseSchedule.getClase(), 
+				courseSchedule, 
+				tiempoLimiteReserva
+			);
+		} catch (Exception e) {
+			System.err.println("[ReserveService.reserveClass] Error generando evento: " + e.getMessage());
+		}
 	}
     
     /**
@@ -211,14 +236,13 @@ public class ReserveService {
     private LocalDateTime calcularTiempoLimiteReserva(Shift shift) {
         LocalDate fechaInicioCurso = shift.getClase().getFechaInicio();
         int diaClase = shift.getDiaEnQueSeDicta(); // 1=Lunes, 7=Domingo
-        String horaInicio = shift.getHoraInicio(); // formato "HH:mm"
+        LocalTime horaInicio = LocalTime.parse(shift.getHoraInicio()); // ✅ Parseado como LocalTime
         
         // Encontrar el primer día de clase
         LocalDate primerDiaClase = encontrarPrimerDiaClase(fechaInicioCurso, diaClase);
         
         // Combinar fecha con hora de inicio
-        LocalTime horaInicioTime = LocalTime.parse(horaInicio);
-        LocalDateTime inicioFirstClass = primerDiaClase.atTime(horaInicioTime);
+        LocalDateTime inicioFirstClass = primerDiaClase.atTime(horaInicio);
         
         // Restar 1 hora para el límite de reserva
         return inicioFirstClass.minusHours(1);
@@ -264,6 +288,17 @@ public class ReserveService {
 					if (shift != null) {
 						shift.setVacancy(shift.getVacancy() + 1);
 						shiftRepository.save(shift);
+						
+						// ✅ GENERAR EVENTO DE EXPIRACIÓN
+						try {
+							eventService.createReservationExpiredEvent(
+								reservation.getIdUser(),
+								shift.getClase(),
+								shift
+							);
+						} catch (Exception e) {
+							System.err.println("[ReserveService.cleanupExpiredReservations] Error generando evento: " + e.getMessage());
+						}
 					}
 					System.out.println("[ReserveService.cleanupExpiredReservations] Marcada EXPIRADA: " + reservation.getId());
 				}
@@ -321,7 +356,7 @@ public class ReserveService {
         }
     }
 	
-		/**
+	/**
 	* Calcula la próxima ocurrencia del shift (día/horario) a partir de "ahora".
 	* Si hoy es el día y la hora ya pasó, salta a la semana siguiente.
 	*/
@@ -353,6 +388,7 @@ public class ReserveService {
 		return date.plusDays(diff);
 	}
 	
+	@Transactional
 	public void checkin(Long userId, Long shiftId) {
         Reservation reservation = reservationRepository
                 .findByIdUserAndIdShift(userId, shiftId)
@@ -372,30 +408,29 @@ public class ReserveService {
 
         // Marcar como asistido
         reservation.setStatus(EstadoReserva.ASISTIO);
-
-        // Si tu entidad tiene algún campo de fecha de asistencia, setéalo acá:
-        // reservation.setAttendanceDate(LocalDateTime.now());
+        reservation.setAttended(true);
+        reservation.setAttendedAt(LocalDateTime.now());
 
         reservationRepository.save(reservation);
+		
+		System.out.println("[ReserveService.checkin] Check-in registrado para userId=" + userId + ", shiftId=" + shiftId);
     }
 	
 	public List<ReservationStatusDTO> getUserHistory(Long userId) {
-    try {
-        List<ReservationStatusDTO> all = getUserReservationsWithStatus(userId);
+		try {
+			List<ReservationStatusDTO> all = getUserReservationsWithStatus(userId);
 
-        return all.stream()
-                .filter(r -> {
-                    String estado = r.getEstadoReserva();
-                    // Ajustá los textos según como los seteás hoy
-                    return "ASISTIO".equalsIgnoreCase(estado);
-                })
-                .toList();
-    } catch (Exception e) {
-        // si querés loguear:
-        // log.error("Error obteniendo historial para userId=" + userId, e);
-        throw new RuntimeException("Error obteniendo historial de reservas para el usuario " + userId, e);
-    }
+			return all.stream()
+					.filter(r -> {
+						String estado = r.getEstadoReserva();
+						// Ajustá los textos según como los seteás hoy
+						return "ASISTIO".equalsIgnoreCase(estado);
+					})
+					.toList();
+		} catch (Exception e) {
+			// si querés loguear:
+			// log.error("Error obteniendo historial para userId=" + userId, e);
+			throw new RuntimeException("Error obteniendo historial de reservas para el usuario " + userId, e);
+		}
+	}
 }
-
-}
-
