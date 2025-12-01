@@ -126,7 +126,8 @@ public class SecurityConfig {
 			"http://127.0.0.1:8080",     // Loopback
 			"http://192.168.1.116:8081" ,         // Red local (wildcard)
             "http://192.168.100.9:8080",
-            "http://192.168.0.15:8080"
+            "http://192.168.0.15:8080",
+            "http://192.168.1.236:8080"
 
     	));
     
