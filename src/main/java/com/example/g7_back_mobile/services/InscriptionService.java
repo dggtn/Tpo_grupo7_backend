@@ -36,8 +36,10 @@ public class InscriptionService {
     private ReservationRepository reservationRepository;
     @Autowired
     private EmailService emailService;
+    
+    // ✅ NUEVO: Autowired del servicio de eventos
     @Autowired
-    private UserEventService eventService; // Servicio de eventos
+    private UserEventService eventService;
 
     @Transactional
     public InscripcionExitosaDTO enrollWithReservation(ReservationDTO reservationDTO) {
@@ -200,8 +202,7 @@ public class InscriptionService {
     }
     
     /**
-     * Cancelar inscripción y generar evento
-     * Este método permite cancelar una inscripción activa y notificar al usuario
+     * ✅ NUEVO MÉTODO: Cancelar inscripción y generar evento
      */
     @Transactional
     public void cancelInscription(Long inscriptionId, Long userId) {
@@ -234,7 +235,7 @@ public class InscriptionService {
 
         System.out.println("[InscriptionService.cancelInscription] Inscripción cancelada exitosamente. Vacante liberada.");
 
-        // GENERAR EVENTO DE CANCELACIÓN
+        // ✅ NUEVO: GENERAR EVENTO DE CANCELACIÓN
         try {
             eventService.createCancellationEvent(userId, course, shift, "Inscripción cancelada por el usuario");
             System.out.println("[InscriptionService.cancelInscription] Evento de cancelación generado correctamente");

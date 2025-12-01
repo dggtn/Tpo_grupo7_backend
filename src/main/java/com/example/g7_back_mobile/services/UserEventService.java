@@ -1,270 +1,438 @@
 package com.example.g7_back_mobile.services;
 
+import com.example.g7_back_mobile.controllers.dtos.UserEventDTO;
+import com.example.g7_back_mobile.repositories.InscriptionRepository;
 import com.example.g7_back_mobile.repositories.UserEventRepository;
-import com.example.g7_back_mobile.repositories.entities.UserEvent;
 import com.example.g7_back_mobile.repositories.entities.Course;
+import com.example.g7_back_mobile.repositories.entities.Inscription;
 import com.example.g7_back_mobile.repositories.entities.Shift;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
+import com.example.g7_back_mobile.repositories.entities.UserEvent;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class UserEventService {
+
+    @Autowired
+    private UserEventRepository userEventRepository;
     
-    private final UserEventRepository eventRepository;
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    @Autowired
+    private InscriptionRepository inscriptionRepository;
     
+    @Autowired
+    private com.example.g7_back_mobile.repositories.ReservationRepository reservationRepository;
+    
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     /**
-     * Crear evento de inscripción
+     * Obtiene eventos pendientes para un usuario (long polling)
+     * Solo devuelve eventos cuya hora programada ya llegó
      */
-    @Async
+    public List<UserEventDTO> getPendingEvents(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        List<UserEvent> events = userEventRepository.findPendingEventsByUserId(userId, now);
+        
+        if (!events.isEmpty()) {
+            // Marcar como entregados
+            List<Long> eventIds = events.stream().map(UserEvent::getId).collect(Collectors.toList());
+            markAsDelivered(eventIds);
+            
+            System.out.println("[UserEventService.getPendingEvents] Entregando " + events.size() 
+                + " eventos para usuario " + userId);
+        }
+        
+        return events.stream()
+            .map(UserEventDTO::fromEntity)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Marca eventos como entregados
+     */
     @Transactional
-    public void createEnrollmentEvent(Long userId, Course course, Shift shift) {
+    public void markAsDelivered(List<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) return;
+        userEventRepository.markAsDelivered(eventIds, LocalDateTime.now());
+    }
+
+    /**
+     * Marca eventos como leídos
+     */
+    @Transactional
+    public void markAsRead(List<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) return;
+        userEventRepository.markAsRead(eventIds);
+    }
+
+    /**
+     * Cuenta eventos no leídos
+     */
+    public long countUnreadEvents(Long userId) {
+        return userEventRepository.countByUserIdAndReadFalse(userId);
+    }
+
+    /**
+     * Crea un evento de recordatorio de clase (1h antes)
+     */
+    public void createClassReminderEvent(Long userId, Course course, Shift shift, LocalDateTime classTime) {
         try {
-            LocalDateTime classStart = calculateNextClassDateTime(shift);
+            // Evitar duplicados
+            List<UserEvent> existing = userEventRepository.findByUserIdAndRelatedShiftIdAndEventType(
+                userId, shift.getId(), UserEvent.EventType.CLASS_REMINDER);
             
-            // ✅ Parsear horaInicio como LocalTime antes de formatear
-            LocalTime horaInicioTime = LocalTime.parse(shift.getHoraInicio());
+            // Filtrar solo los que sean para la misma fecha/hora
+            boolean alreadyExists = existing.stream()
+                .anyMatch(e -> e.getScheduledTime().isEqual(classTime.minusHours(1)));
             
-            String message = String.format(
-                "Te has inscrito en %s. Próxima clase: %s a las %s en %s",
-                course.getName(),
-                classStart.format(DATE_FORMATTER),
-                horaInicioTime.format(DateTimeFormatter.ofPattern("HH:mm")),
-                shift.getSede() != null ? shift.getSede().getName() : "sede por confirmar"
-            );
-            
+            if (alreadyExists) {
+                System.out.println("[UserEventService] Recordatorio ya existe para userId=" + userId 
+                    + ", shiftId=" + shift.getId() + ", classTime=" + classTime);
+                return;
+            }
+
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("classTime", classTime.toString());
+            metadata.put("courseName", course.getName());
+            metadata.put("shiftHour", shift.getHoraInicio());
+            metadata.put("dayOfWeek", shift.getDiaEnQueSeDicta());
+            if (shift.getSede() != null) {
+                metadata.put("location", shift.getSede().getName());
+            }
+
             UserEvent event = UserEvent.builder()
                 .userId(userId)
-                .type(UserEvent.EventType.ENROLLED)
-                .title("Inscripción Confirmada")
-                .message(message)
-                .classId(course.getId())
-                .shiftId(shift.getId())
-                .classStartAt(classStart)
-                .courseName(course.getName())
-                .sede(shift.getSede() != null ? shift.getSede().getName() : null)
+                .eventType(UserEvent.EventType.CLASS_REMINDER)
+                .title("¡Clase en 1 hora!")
+                .message(String.format("Tu clase de %s comienza a las %s. ¡No la pierdas!", 
+                    course.getName(), shift.getHoraInicio()))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(classTime.minusHours(1)) // 1 hora antes
+                .metadata(objectMapper.writeValueAsString(metadata))
                 .build();
-            
-            eventRepository.save(event);
-            log.info("[UserEventService] Evento ENROLLED creado para userId={}, shiftId={}", 
-                userId, shift.getId());
-            
+
+            userEventRepository.save(event);
+            System.out.println("[UserEventService] Recordatorio creado para userId=" + userId 
+                + " a las " + event.getScheduledTime());
+                
         } catch (Exception e) {
-            log.error("[UserEventService] Error creando evento de inscripción: {}", e.getMessage());
+            System.err.println("[UserEventService.createClassReminderEvent] Error: " + e.getMessage());
+            e.printStackTrace();
         }
     }
-    
+
     /**
-     * Crear evento de reprogramación
+     * Crea evento de clase cancelada
      */
-    @Async
-    @Transactional
-    public void createRescheduleEvent(Long userId, Course course, Shift shift, 
-                                     LocalDateTime newStartTime, String reason) {
+    public void createClassCancelledEvent(Long userId, Course course, Shift shift, String reason) {
         try {
-            String message = String.format(
-                "La clase de %s ha sido reprogramada para el %s a las %s. %s",
-                course.getName(),
-                newStartTime.format(DATE_FORMATTER),
-                newStartTime.format(DateTimeFormatter.ofPattern("HH:mm")),
-                reason != null ? "Motivo: " + reason : ""
-            );
-            
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("courseName", course.getName());
+            metadata.put("shiftHour", shift.getHoraInicio());
+            metadata.put("reason", reason);
+
             UserEvent event = UserEvent.builder()
                 .userId(userId)
-                .type(UserEvent.EventType.RESCHEDULE)
-                .title("Clase Reprogramada")
-                .message(message)
-                .classId(course.getId())
-                .shiftId(shift.getId())
-                .classStartAt(newStartTime)
-                .courseName(course.getName())
-                .sede(shift.getSede() != null ? shift.getSede().getName() : null)
+                .eventType(UserEvent.EventType.CLASS_CANCELLED)
+                .title("Clase cancelada")
+                .message(String.format("La clase de %s del %s ha sido cancelada. %s", 
+                    course.getName(), obtenerNombreDia(shift.getDiaEnQueSeDicta()), reason))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now()) // Inmediato
+                .metadata(objectMapper.writeValueAsString(metadata))
                 .build();
-            
-            eventRepository.save(event);
-            log.info("[UserEventService] Evento RESCHEDULE creado para userId={}, shiftId={}", 
-                userId, shift.getId());
+
+            userEventRepository.save(event);
+            System.out.println("[UserEventService] Evento de cancelación creado para userId=" + userId);
             
         } catch (Exception e) {
-            log.error("[UserEventService] Error creando evento de reprogramación: {}", e.getMessage());
+            System.err.println("[UserEventService.createClassCancelledEvent] Error: " + e.getMessage());
         }
     }
-    
+
     /**
-     * Crear evento de cancelación
+     * Crea evento de clase reprogramada
      */
-    @Async
-    @Transactional
-    public void createCancellationEvent(Long userId, Course course, Shift shift, String reason) {
+    public void createClassRescheduledEvent(Long userId, Course course, Shift oldShift, 
+                                           Shift newShift, String newDateTime) {
         try {
-            String message = String.format(
-                "La clase de %s del %s ha sido cancelada. %s",
-                course.getName(),
-                calculateNextClassDateTime(shift).format(DATE_FORMATTER),
-                reason != null ? "Motivo: " + reason : ""
-            );
-            
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("courseName", course.getName());
+            metadata.put("oldTime", oldShift.getHoraInicio());
+            metadata.put("newTime", newShift.getHoraInicio());
+            metadata.put("newDateTime", newDateTime);
+
             UserEvent event = UserEvent.builder()
                 .userId(userId)
-                .type(UserEvent.EventType.CANCEL)
-                .title("Clase Cancelada")
-                .message(message)
-                .classId(course.getId())
-                .shiftId(shift.getId())
-                .courseName(course.getName())
+                .eventType(UserEvent.EventType.CLASS_RESCHEDULED)
+                .title("Clase reprogramada")
+                .message(String.format("La clase de %s se ha reprogramado. Nuevo horario: %s", 
+                    course.getName(), newDateTime))
+                .relatedShiftId(newShift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now())
+                .metadata(objectMapper.writeValueAsString(metadata))
                 .build();
-            
-            eventRepository.save(event);
-            log.info("[UserEventService] Evento CANCEL creado para userId={}, shiftId={}", 
-                userId, shift.getId());
+
+            userEventRepository.save(event);
             
         } catch (Exception e) {
-            log.error("[UserEventService] Error creando evento de cancelación: {}", e.getMessage());
+            System.err.println("[UserEventService.createClassRescheduledEvent] Error: " + e.getMessage());
         }
     }
-    
+
     /**
-     * Crear evento de confirmación de reserva
+     * Crea evento de reserva confirmada
      */
-    @Async
-    @Transactional
     public void createReservationConfirmedEvent(Long userId, Course course, Shift shift, 
                                                LocalDateTime expiryDate) {
         try {
-            String message = String.format(
-                "Reserva confirmada para %s. Recuerda asistir a la primera clase el %s para confirmar tu inscripción.",
-                course.getName(),
-                calculateNextClassDateTime(shift).format(DATE_FORMATTER)
-            );
-            
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("courseName", course.getName());
+            metadata.put("expiryDate", expiryDate.toString());
+
             UserEvent event = UserEvent.builder()
                 .userId(userId)
-                .type(UserEvent.EventType.RESERVATION_CONFIRMED)
-                .title("Reserva Confirmada")
-                .message(message)
-                .classId(course.getId())
-                .shiftId(shift.getId())
-                .classStartAt(calculateNextClassDateTime(shift))
-                .courseName(course.getName())
-                .sede(shift.getSede() != null ? shift.getSede().getName() : null)
+                .eventType(UserEvent.EventType.RESERVATION_CONFIRMED)
+                .title("Reserva confirmada")
+                .message(String.format("Tu reserva para %s ha sido confirmada. " +
+                    "Vence el %s", course.getName(), expiryDate.toLocalDate()))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now())
+                .metadata(objectMapper.writeValueAsString(metadata))
                 .build();
-            
-            eventRepository.save(event);
-            log.info("[UserEventService] Evento RESERVATION_CONFIRMED creado para userId={}, shiftId={}", 
-                userId, shift.getId());
+
+            userEventRepository.save(event);
             
         } catch (Exception e) {
-            log.error("[UserEventService] Error creando evento de reserva: {}", e.getMessage());
+            System.err.println("[UserEventService.createReservationConfirmedEvent] Error: " + e.getMessage());
         }
     }
-    
+
     /**
-     * Crear evento de reserva expirada
+     * Crea evento de reserva por expirar
      */
-    @Async
-    @Transactional
+    public void createReservationExpiringEvent(Long userId, Course course, Shift shift, 
+                                              long minutesRemaining) {
+        try {
+            UserEvent event = UserEvent.builder()
+                .userId(userId)
+                .eventType(UserEvent.EventType.RESERVATION_EXPIRING)
+                .title("Reserva por expirar")
+                .message(String.format("Tu reserva para %s expira en %d minutos. " +
+                    "Inscríbete pronto para no perder tu lugar.", course.getName(), minutesRemaining))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now())
+                .build();
+
+            userEventRepository.save(event);
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.createReservationExpiringEvent] Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Crea evento de reserva expirada
+     */
     public void createReservationExpiredEvent(Long userId, Course course, Shift shift) {
         try {
-            String message = String.format(
-                "Tu reserva para %s ha expirado. El cupo ha sido liberado.",
-                course.getName()
-            );
-            
             UserEvent event = UserEvent.builder()
                 .userId(userId)
-                .type(UserEvent.EventType.RESERVATION_EXPIRED)
-                .title("Reserva Expirada")
-                .message(message)
-                .classId(course.getId())
-                .shiftId(shift.getId())
-                .courseName(course.getName())
+                .eventType(UserEvent.EventType.RESERVATION_EXPIRED)
+                .title("Reserva expirada")
+                .message(String.format("Tu reserva para %s ha expirado. " +
+                    "Puedes hacer una nueva reserva si aún hay cupos disponibles.", course.getName()))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now())
                 .build();
-            
-            eventRepository.save(event);
-            log.info("[UserEventService] Evento RESERVATION_EXPIRED creado para userId={}, shiftId={}", 
-                userId, shift.getId());
+
+            userEventRepository.save(event);
             
         } catch (Exception e) {
-            log.error("[UserEventService] Error creando evento de expiración: {}", e.getMessage());
+            System.err.println("[UserEventService.createReservationExpiredEvent] Error: " + e.getMessage());
         }
     }
-    
+
     /**
-     * Obtener eventos desde un timestamp (para long polling)
+     * Crea evento de inscripción confirmada
      */
-    @Transactional
-    public List<UserEvent> getEventsSince(Long userId, LocalDateTime since) {
-        return eventRepository.findUnconsumedEventsSince(userId, since);
-    }
-    
-    /**
-     * Marcar eventos como consumidos
-     */
-    @Transactional
-    public void markEventsAsConsumed(List<Long> eventIds) {
-        if (eventIds != null && !eventIds.isEmpty()) {
-            eventRepository.markAsConsumed(eventIds, LocalDateTime.now());
-            log.debug("[UserEventService] Marcados {} eventos como consumidos", eventIds.size());
+    public void createEnrollmentEvent(Long userId, Course course, Shift shift) {
+        try {
+            UserEvent event = UserEvent.builder()
+                .userId(userId)
+                .eventType(UserEvent.EventType.ENROLLMENT_CONFIRMED)
+                .title("¡Inscripción exitosa!")
+                .message(String.format("Te has inscrito exitosamente a %s. " +
+                    "Tu clase es los %s a las %s.", 
+                    course.getName(), 
+                    obtenerNombreDia(shift.getDiaEnQueSeDicta()),
+                    shift.getHoraInicio()))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now())
+                .build();
+
+            userEventRepository.save(event);
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.createEnrollmentEvent] Error: " + e.getMessage());
         }
     }
-    
+
     /**
-     * Limpieza periódica de eventos antiguos (ejecutar diariamente)
+     * Crea evento de inscripción/reserva cancelada
      */
-    @Scheduled(cron = "0 0 2 * * ?") // 2 AM todos los días
+    public void createCancellationEvent(Long userId, Course course, Shift shift, String reason) {
+        try {
+            UserEvent event = UserEvent.builder()
+                .userId(userId)
+                .eventType(UserEvent.EventType.ENROLLMENT_CANCELLED)
+                .title("Cancelación confirmada")
+                .message(String.format("Tu inscripción a %s ha sido cancelada. %s", 
+                    course.getName(), reason))
+                .relatedShiftId(shift.getId())
+                .relatedCourseId(course.getId())
+                .scheduledTime(LocalDateTime.now())
+                .build();
+
+            userEventRepository.save(event);
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.createCancellationEvent] Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Tarea programada: genera recordatorios para clases próximas
+     * Se ejecuta cada 15 minutos
+     */
+    @Scheduled(fixedRate = 900000) // 15 minutos
+    @Transactional
+    public void generateUpcomingClassReminders() {
+        try {
+            System.out.println("[UserEventService.generateUpcomingClassReminders] Iniciando generación...");
+            
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime windowStart = now.plusMinutes(45); // Desde 45 min adelante
+            LocalDateTime windowEnd = now.plusMinutes(75);   // Hasta 1h15 adelante
+            
+            // Obtener todas las inscripciones activas
+            List<Inscription> activeInscriptions = inscriptionRepository.findByEstado("ACTIVA");
+            
+            int remindersCreated = 0;
+            
+            for (Inscription inscription : activeInscriptions) {
+                try {
+                    Shift shift = inscription.getShift();
+                    Course course = shift.getClase();
+                    
+                    // Calcular próxima clase
+                    LocalDateTime nextClass = calculateNextClassTime(shift, now);
+                    
+                    if (nextClass == null) continue;
+                    
+                    // Verificar si está en la ventana de 45-75 minutos
+                    if (nextClass.isAfter(windowStart) && nextClass.isBefore(windowEnd)) {
+                        createClassReminderEvent(
+                            inscription.getUser().getId(),
+                            course,
+                            shift,
+                            nextClass
+                        );
+                        remindersCreated++;
+                    }
+                    
+                } catch (Exception e) {
+                    System.err.println("[UserEventService] Error procesando inscripción " 
+                        + inscription.getId() + ": " + e.getMessage());
+                }
+            }
+            
+            if (remindersCreated > 0) {
+                System.out.println("[UserEventService.generateUpcomingClassReminders] " 
+                    + remindersCreated + " recordatorios creados");
+            }
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.generateUpcomingClassReminders] Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Calcula la próxima clase basándose en el día y hora del shift
+     */
+    private LocalDateTime calculateNextClassTime(Shift shift, LocalDateTime from) {
+        try {
+            int targetDay = shift.getDiaEnQueSeDicta(); // 1=Lunes, 7=Domingo
+            LocalTime classTime = LocalTime.parse(shift.getHoraInicio());
+            
+            LocalDate today = from.toLocalDate();
+            DayOfWeek targetDayOfWeek = DayOfWeek.of(targetDay);
+            
+            // Buscar el próximo día que coincida
+            LocalDate nextDate = today;
+            int daysChecked = 0;
+            
+            while (daysChecked < 7) {
+                if (nextDate.getDayOfWeek() == targetDayOfWeek) {
+                    LocalDateTime candidate = LocalDateTime.of(nextDate, classTime);
+                    
+                    // Solo si es futuro
+                    if (candidate.isAfter(from)) {
+                        // Verificar que esté dentro del rango del curso
+                        if (!nextDate.isBefore(shift.getClase().getFechaInicio()) &&
+                            !nextDate.isAfter(shift.getClase().getFechaFin())) {
+                            return candidate;
+                        }
+                    }
+                }
+                nextDate = nextDate.plusDays(1);
+                daysChecked++;
+            }
+            
+            return null;
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.calculateNextClassTime] Error: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Limpieza de eventos antiguos - ejecutar semanalmente
+     */
+    @Scheduled(cron = "0 0 2 * * SUN") // Domingos a las 2 AM
     @Transactional
     public void cleanupOldEvents() {
         try {
-            LocalDateTime threshold = LocalDateTime.now().minusDays(7);
-            int deleted = eventRepository.deleteConsumedEventsBefore(threshold);
-            log.info("[UserEventService] Limpieza: {} eventos antiguos eliminados", deleted);
+            LocalDateTime cutoffDate = LocalDateTime.now().minusDays(30);
+            userEventRepository.deleteOldReadEvents(cutoffDate);
+            System.out.println("[UserEventService.cleanupOldEvents] Eventos antiguos eliminados");
         } catch (Exception e) {
-            log.error("[UserEventService] Error en limpieza de eventos: {}", e.getMessage());
+            System.err.println("[UserEventService.cleanupOldEvents] Error: " + e.getMessage());
         }
     }
-    
-    /**
-     * Calcular la próxima fecha/hora de clase
-     */
-    private LocalDateTime calculateNextClassDateTime(Shift shift) {
-        LocalDateTime now = LocalDateTime.now();
-        
-        // ✅ Parsear horaInicio como LocalTime
-        LocalTime horaInicioTime = LocalTime.parse(shift.getHoraInicio());
-        
-        LocalDateTime courseStart = shift.getClase().getFechaInicio().atTime(horaInicioTime);
-        
-        if (courseStart.isAfter(now)) {
-            return courseStart;
-        }
-        
-        // Si el curso ya empezó, calcular la próxima clase
-        int dayOfWeek = shift.getDiaEnQueSeDicta();
-        LocalDateTime nextClass = now;
-        
-        while (nextClass.getDayOfWeek().getValue() != dayOfWeek || 
-               nextClass.isBefore(now)) {
-            nextClass = nextClass.plusDays(1);
-        }
-        
-        // ✅ Usar horaInicioTime ya parseado
-        return nextClass.withHour(horaInicioTime.getHour())
-                        .withMinute(horaInicioTime.getMinute())
-                        .withSecond(0)
-                        .withNano(0);
+
+    private String obtenerNombreDia(int diaNumero) {
+        String[] diasSemana = {"", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"};
+        return (diaNumero >= 1 && diaNumero <= 7) ? diasSemana[diaNumero] : "Día " + diaNumero;
     }
 }

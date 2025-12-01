@@ -13,54 +13,39 @@ import java.util.List;
 @Repository
 public interface UserEventRepository extends JpaRepository<UserEvent, Long> {
     
-    /**
-     * Obtener eventos no consumidos de un usuario desde un timestamp
-     */
-    @Query("SELECT e FROM UserEvent e WHERE e.userId = :userId " +
-           "AND e.consumed = false " +
-           "AND e.createdAt > :since " +
-           "ORDER BY e.createdAt ASC")
-    List<UserEvent> findUnconsumedEventsSince(
-        @Param("userId") Long userId, 
-        @Param("since") LocalDateTime since
-    );
+    // Eventos pendientes (no leídos) de un usuario
+    List<UserEvent> findByUserIdAndReadFalseOrderByScheduledTimeAsc(Long userId);
     
-    /**
-     * Marcar eventos como consumidos
-     */
+    // Eventos no entregados de un usuario
+    List<UserEvent> findByUserIdAndDeliveredFalseOrderByScheduledTimeAsc(Long userId);
+    
+    // Eventos pendientes cuya hora programada ya llegó
+    @Query("SELECT e FROM UserEvent e WHERE e.userId = :userId AND e.delivered = false " +
+           "AND e.scheduledTime <= :now ORDER BY e.scheduledTime ASC")
+    List<UserEvent> findPendingEventsByUserId(@Param("userId") Long userId, 
+                                               @Param("now") LocalDateTime now);
+    
+    // Marcar eventos como entregados
     @Modifying
-    @Query("UPDATE UserEvent e SET e.consumed = true, e.consumedAt = :consumedAt " +
+    @Query("UPDATE UserEvent e SET e.delivered = true, e.deliveredAt = :deliveredAt " +
            "WHERE e.id IN :eventIds")
-    void markAsConsumed(
-        @Param("eventIds") List<Long> eventIds, 
-        @Param("consumedAt") LocalDateTime consumedAt
-    );
+    void markAsDelivered(@Param("eventIds") List<Long> eventIds, 
+                         @Param("deliveredAt") LocalDateTime deliveredAt);
     
-    /**
-     * Limpiar eventos antiguos consumidos (limpieza periódica)
-     */
+    // Marcar eventos como leídos
     @Modifying
-    @Query("DELETE FROM UserEvent e WHERE e.consumed = true " +
-           "AND e.consumedAt < :before")
-    int deleteConsumedEventsBefore(@Param("before") LocalDateTime before);
+    @Query("UPDATE UserEvent e SET e.read = true WHERE e.id IN :eventIds")
+    void markAsRead(@Param("eventIds") List<Long> eventIds);
     
-    /**
-     * Obtener eventos pendientes de un usuario para un shift específico
-     */
-    @Query("SELECT e FROM UserEvent e WHERE e.userId = :userId " +
-           "AND e.shiftId = :shiftId " +
-           "AND e.consumed = false " +
-           "ORDER BY e.createdAt DESC")
-    List<UserEvent> findPendingEventsByShift(
-        @Param("userId") Long userId, 
-        @Param("shiftId") Long shiftId
-    );
+    // Eventos de un turno específico (para evitar duplicados)
+    List<UserEvent> findByUserIdAndRelatedShiftIdAndEventType(
+        Long userId, Long shiftId, UserEvent.EventType eventType);
     
-    /**
-     * Contar eventos no consumidos de un usuario
-     */
-    @Query("SELECT COUNT(e) FROM UserEvent e WHERE e.userId = :userId " +
-           "AND e.consumed = false")
-    long countUnconsumedEvents(@Param("userId") Long userId);
+    // Limpiar eventos antiguos ya leídos (para no llenar la DB)
+    @Modifying
+    @Query("DELETE FROM UserEvent e WHERE e.read = true AND e.createdAt < :cutoffDate")
+    void deleteOldReadEvents(@Param("cutoffDate") LocalDateTime cutoffDate);
+    
+    // Contar eventos no leídos
+    long countByUserIdAndReadFalse(Long userId);
 }
-

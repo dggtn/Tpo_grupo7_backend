@@ -33,8 +33,10 @@ public class ReserveService {
 	private ReservationRepository reservationRepository;
 	@Autowired
 	private ShiftRatingRepository shiftRatingRepository;
+	
+	// Autowired del servicio de eventos
 	@Autowired
-	private UserEventService eventService; // ✅ NUEVO
+	private UserEventService eventService;
 
     public List<Reservation> getUserReservations(Long userId) throws Exception {
       try {
@@ -112,7 +114,6 @@ public class ReserveService {
 		if (!LocalDateTime.now(zone).isBefore(tiempoLimiteCancelacion)) {
 			throw new IllegalStateException("Ya no es posible cancelar la reserva (límite: 1h antes de la próxima clase).");
 		}
-		
 	
 		if (reservation.getStatus() == EstadoReserva.CANCELADA) {
 			throw new IllegalStateException("La reserva ya está cancelada.");
@@ -130,9 +131,10 @@ public class ReserveService {
 	
 		System.out.println("[ReserveService.cancelReservation] Reserva cancelada (status=CANCELADA)");
 		
-		// ✅ GENERAR EVENTO DE CANCELACIÓN
+		// GENERAR EVENTO DE CANCELACIÓN
 		try {
 			eventService.createCancellationEvent(userId, shift.getClase(), shift, "Reserva cancelada por el usuario");
+			System.out.println("[ReserveService.cancelReservation] Evento de cancelación generado correctamente");
 		} catch (Exception e) {
 			System.err.println("[ReserveService.cancelReservation] Error generando evento: " + e.getMessage());
 		}
@@ -163,7 +165,7 @@ public class ReserveService {
 		
 		// Validar que la próxima ocurrencia esté dentro del rango del curso
 		java.time.LocalDate fechaInicioCurso = courseSchedule.getClase().getFechaInicio();
-		java.time.LocalDate fechaFinCurso   = courseSchedule.getClase().getFechaFin(); // puede ser null
+		java.time.LocalDate fechaFinCurso   = courseSchedule.getClase().getFechaFin();
 		
 		if (nextOccurrence.toLocalDate().isBefore(fechaInicioCurso)) {
 			throw new IllegalStateException("La próxima clase aún no entra en el rango del curso.");
@@ -179,7 +181,6 @@ public class ReserveService {
 		if (!now.isBefore(tiempoLimiteReserva)) {
 			throw new IllegalStateException("El tiempo límite para reservar esta clase expiró (1 hora antes del inicio).");
 		}
-
 
 		// 4. VALIDACIONES DE NEGOCIO
 		if (courseSchedule.getVacancy() <= 0) {
@@ -209,7 +210,6 @@ public class ReserveService {
 				.build();
 		
 		reservationRepository.save(nuevaReservation);
-		
 
 		// 6. ACTUALIZACIÓN DE VACANTES
 		courseSchedule.setVacancy(courseSchedule.getVacancy() - 1);
@@ -217,7 +217,7 @@ public class ReserveService {
         
         System.out.println("[ReserveService.reserveClass] Reserva creada exitosamente. Expira el: " + tiempoLimiteReserva);
 		
-		// ✅ GENERAR EVENTO DE RESERVA CONFIRMADA
+		//  GENERAR EVENTO DE RESERVA CONFIRMADA
 		try {
 			eventService.createReservationConfirmedEvent(
 				user.getId(), 
@@ -225,6 +225,7 @@ public class ReserveService {
 				courseSchedule, 
 				tiempoLimiteReserva
 			);
+			System.out.println("[ReserveService.reserveClass] Evento de reserva confirmada generado correctamente");
 		} catch (Exception e) {
 			System.err.println("[ReserveService.reserveClass] Error generando evento: " + e.getMessage());
 		}
@@ -235,8 +236,8 @@ public class ReserveService {
      */
     private LocalDateTime calcularTiempoLimiteReserva(Shift shift) {
         LocalDate fechaInicioCurso = shift.getClase().getFechaInicio();
-        int diaClase = shift.getDiaEnQueSeDicta(); // 1=Lunes, 7=Domingo
-        LocalTime horaInicio = LocalTime.parse(shift.getHoraInicio()); // ✅ Parseado como LocalTime
+        int diaClase = shift.getDiaEnQueSeDicta();
+        LocalTime horaInicio = LocalTime.parse(shift.getHoraInicio());
         
         // Encontrar el primer día de clase
         LocalDate primerDiaClase = encontrarPrimerDiaClase(fechaInicioCurso, diaClase);
@@ -289,13 +290,15 @@ public class ReserveService {
 						shift.setVacancy(shift.getVacancy() + 1);
 						shiftRepository.save(shift);
 						
-						// ✅ GENERAR EVENTO DE EXPIRACIÓN
+						//  GENERAR EVENTO DE EXPIRACIÓN
 						try {
 							eventService.createReservationExpiredEvent(
 								reservation.getIdUser(),
 								shift.getClase(),
 								shift
 							);
+							System.out.println("[ReserveService.cleanupExpiredReservations] Evento de expiración generado para userId=" 
+								+ reservation.getIdUser());
 						} catch (Exception e) {
 							System.err.println("[ReserveService.cleanupExpiredReservations] Error generando evento: " + e.getMessage());
 						}
@@ -315,6 +318,7 @@ public class ReserveService {
         String[] diasSemana = {"", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"};
         return (diaNumero >= 1 && diaNumero <= 7) ? diasSemana[diaNumero] : "Día " + diaNumero;
     }
+    
     /**
      * Envía email de confirmación de cancelación de reserva
      */
@@ -395,7 +399,7 @@ public class ReserveService {
                 .orElseThrow(() -> new IllegalStateException(
                         "No se encontró una reserva activa para ese turno."));
 
-        // Validaciones básicas (ajustá a tu enum real)
+        // Validaciones básicas
         if (reservation.getStatus() == EstadoReserva.CANCELADA) {
             throw new IllegalStateException("La reserva ya fue cancelada.");
         }
@@ -423,13 +427,10 @@ public class ReserveService {
 			return all.stream()
 					.filter(r -> {
 						String estado = r.getEstadoReserva();
-						// Ajustá los textos según como los seteás hoy
 						return "ASISTIO".equalsIgnoreCase(estado);
 					})
 					.toList();
 		} catch (Exception e) {
-			// si querés loguear:
-			// log.error("Error obteniendo historial para userId=" + userId, e);
 			throw new RuntimeException("Error obteniendo historial de reservas para el usuario " + userId, e);
 		}
 	}

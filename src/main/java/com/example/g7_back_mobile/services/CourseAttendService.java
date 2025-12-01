@@ -1,5 +1,4 @@
 package com.example.g7_back_mobile.services;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,6 +43,10 @@ public class CourseAttendService {
     
     @Autowired
     private EmailService emailService;
+    
+    // Autowired del servicio de eventos
+    @Autowired
+    private UserEventService eventService;
 
     @Transactional
     public CourseAttend registrarAsistencia(AsistenciaDTO dto) {
@@ -140,6 +143,14 @@ public class CourseAttendService {
             } catch (Exception e) {
                 System.err.println("[CourseAttendService.registrarAsistencia] Error enviando email: " + e.getMessage());
             }
+            
+            // GENERAR EVENTO DE INSCRIPCIÓN AUTOMÁTICA
+            try {
+                eventService.createEnrollmentEvent(user.getId(), shift.getClase(), shift);
+                System.out.println("[CourseAttendService.registrarAsistencia] Evento de inscripción automática generado");
+            } catch (Exception e) {
+                System.err.println("[CourseAttendService.registrarAsistencia] Error generando evento: " + e.getMessage());
+            }
         }
         
         System.out.println("[CourseAttendService.registrarAsistencia] Asistencia registrada exitosamente para usuario " 
@@ -164,7 +175,7 @@ public class CourseAttendService {
         
         Reservation reserva = reservaOpt.get();
         
-        // Verificar que la reserva no haya expirado (aunque debería estar vigente para la primera clase)
+        // Verificar que la reserva no haya expirado
         if (reserva.getExpiryDate().isBefore(LocalDateTime.now())) {
             // Limpiar reserva expirada
             reservationRepository.delete(reserva);
