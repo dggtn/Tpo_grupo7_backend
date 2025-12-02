@@ -34,17 +34,27 @@ public class NotificationController {
     public ResponseEntity<ResponseData<?>> pollNotifications(
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
+            // ✅ VALIDACIÓN ADICIONAL
+            if (userDetails == null) {
+                System.err.println("[NotificationController.pollNotifications] UserDetails es null");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ResponseData.error("No autenticado"));
+            }
+            
             System.out.println("[NotificationController.pollNotifications] Polling para usuario: " 
                 + userDetails.getUsername());
             
             User user = userService.getUserByEmail(userDetails.getUsername());
-            List<UserEventDTO> events = userEventService.getPendingEvents(user.getId());
             
-            if (events.isEmpty()) {
-                // No hay eventos nuevos
-                return ResponseEntity.ok(ResponseData.success(List.of()));
+            if (user == null || user.getId() == null) {
+                System.err.println("[NotificationController.pollNotifications] Usuario no encontrado");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseData.error("Usuario no encontrado"));
             }
             
+            List<UserEventDTO> events = userEventService.getPendingEvents(user.getId());
+            
+            // ✅ SIEMPRE DEVOLVER RESPUESTA EXITOSA (aunque sea lista vacía)
             System.out.println("[NotificationController.pollNotifications] Devolviendo " 
                 + events.size() + " eventos");
             
@@ -53,8 +63,9 @@ public class NotificationController {
         } catch (Exception e) {
             System.err.println("[NotificationController.pollNotifications] Error: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseData.error("Error obteniendo notificaciones"));
+            
+            // ✅ DEVOLVER LISTA VACÍA EN LUGAR DE ERROR para no romper el polling
+            return ResponseEntity.ok(ResponseData.success(new java.util.ArrayList<>()));
         }
     }
 
@@ -73,12 +84,16 @@ public class NotificationController {
                     .body(ResponseData.error("eventIds es requerido"));
             }
             
+            System.out.println("[NotificationController.markAsRead] Marcando " 
+                + request.getEventIds().size() + " eventos como leídos");
+            
             userEventService.markAsRead(request.getEventIds());
             
             return ResponseEntity.ok(ResponseData.success("Notificaciones marcadas como leídas"));
             
         } catch (Exception e) {
             System.err.println("[NotificationController.markAsRead] Error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseData.error("Error marcando notificaciones"));
         }
@@ -92,15 +107,29 @@ public class NotificationController {
     public ResponseEntity<ResponseData<?>> getUnreadCount(
             @AuthenticationPrincipal UserDetails userDetails) {
         try {
+            if (userDetails == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ResponseData.error("No autenticado"));
+            }
+            
             User user = userService.getUserByEmail(userDetails.getUsername());
+            
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ResponseData.error("Usuario no encontrado"));
+            }
+            
             long count = userEventService.countUnreadEvents(user.getId());
+            
+            System.out.println("[NotificationController.getUnreadCount] Usuario " 
+                + user.getId() + " tiene " + count + " eventos no leídos");
             
             return ResponseEntity.ok(ResponseData.success(count));
             
         } catch (Exception e) {
             System.err.println("[NotificationController.getUnreadCount] Error: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseData.error("Error obteniendo contador"));
+            e.printStackTrace();
+            return ResponseEntity.ok(ResponseData.success(0L));
         }
     }
 

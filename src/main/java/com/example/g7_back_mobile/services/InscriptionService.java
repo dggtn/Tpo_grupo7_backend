@@ -1,6 +1,8 @@
 package com.example.g7_back_mobile.services;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -174,15 +176,21 @@ public class InscriptionService {
         
         System.out.println("[InscriptionService.enrollUser] Inscripción creada con ID: " + savedInscripcion.getId());
         
-        // ✅ NUEVO: GENERAR EVENTO DE INSCRIPCIÓN
+        // GENERAR EVENTO DE INSCRIPCIÓN
         try {
             eventService.createEnrollmentEvent(user.getId(), clase, courseSchedule);
-            System.out.println("[InscriptionService.enrollUser] Evento de inscripción generado correctamente");
+            System.out.println("[InscriptionService.enrollUser] ✅ Evento de inscripción generado");
         } catch (Exception e) {
-            System.err.println("[InscriptionService.enrollUser] Error generando evento de inscripción: " + e.getMessage());
-            // No fallar la inscripción por un error en el evento
+            System.err.println("[InscriptionService.enrollUser] ❌ Error generando evento de inscripción: " + e.getMessage());
+            e.printStackTrace();
         }
-        
+        try {
+            generarRecordatoriosDeClases(user.getId(), clase, courseSchedule);
+            System.out.println("[InscriptionService.enrollUser] ✅ Recordatorios de clases generados");
+        } catch (Exception e) {
+            System.err.println("[InscriptionService.enrollUser] ❌ Error generando recordatorios: " + e.getMessage());
+            e.printStackTrace();
+        }
         // 9. ENVÍO DE EMAIL DE CONFIRMACIÓN
         try {
             enviarEmailConfirmacion(user, clase, courseSchedule);
@@ -200,9 +208,55 @@ public class InscriptionService {
                 savedInscripcion.getEstado()
         );
     }
+
+    /**
+     * ✅ NUEVO MÉTODO: Genera recordatorios para todas las clases futuras del curso
+     */
+    private void generarRecordatoriosDeClases(Long userId, Course curso, Shift shift) {
+        try {
+            LocalDate hoy = LocalDate.now();
+            LocalDate fechaInicio = curso.getFechaInicio();
+            LocalDate fechaFin = curso.getFechaFin();
+            
+            // Si el curso ya empezó, empezar desde hoy
+            LocalDate fechaDesde = fechaInicio.isBefore(hoy) ? hoy : fechaInicio;
+            
+            int diaClase = shift.getDiaEnQueSeDicta(); // 1=Lunes, 7=Domingo
+            LocalTime horaInicio = LocalTime.parse(shift.getHoraInicio());
+            
+            System.out.println("[InscriptionService.generarRecordatoriosDeClases] Generando para userId=" 
+                + userId + ", curso=" + curso.getName() + ", día=" + diaClase);
+            
+            int recordatoriosGenerados = 0;
+            LocalDate fecha = fechaDesde;
+            
+            // Iterar por todas las fechas del curso
+            while (!fecha.isAfter(fechaFin)) {
+                // Si coincide con el día de la clase
+                if (fecha.getDayOfWeek().getValue() == diaClase) {
+                    LocalDateTime fechaHoraClase = LocalDateTime.of(fecha, horaInicio);
+                    
+                    // Solo generar recordatorios para clases futuras
+                    if (fechaHoraClase.isAfter(LocalDateTime.now())) {
+                        eventService.createClassReminderEvent(userId, curso, shift, fechaHoraClase);
+                        recordatoriosGenerados++;
+                        System.out.println("[InscriptionService] 📅 Recordatorio para: " + fechaHoraClase);
+                    }
+                }
+                fecha = fecha.plusDays(1);
+            }
+            
+            System.out.println("[InscriptionService.generarRecordatoriosDeClases] ✅ " 
+                + recordatoriosGenerados + " recordatorios generados");
+            
+        } catch (Exception e) {
+            System.err.println("[InscriptionService.generarRecordatoriosDeClases] Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
     
     /**
-     * ✅ NUEVO MÉTODO: Cancelar inscripción y generar evento
+     *  Cancelar inscripción y generar evento
      */
     @Transactional
     public void cancelInscription(Long inscriptionId, Long userId) {

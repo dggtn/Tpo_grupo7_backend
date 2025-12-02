@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,15 +26,17 @@ public interface UserEventRepository extends JpaRepository<UserEvent, Long> {
     List<UserEvent> findPendingEventsByUserId(@Param("userId") Long userId, 
                                                @Param("now") LocalDateTime now);
     
-    // Marcar eventos como entregados
+    // ✅ CORREGIDO: Marcar eventos como entregados
     @Modifying
+    @Transactional
     @Query("UPDATE UserEvent e SET e.delivered = true, e.deliveredAt = :deliveredAt " +
            "WHERE e.id IN :eventIds")
     void markAsDelivered(@Param("eventIds") List<Long> eventIds, 
                          @Param("deliveredAt") LocalDateTime deliveredAt);
     
-    // Marcar eventos como leídos
+    // ✅ CORREGIDO: Marcar eventos como leídos
     @Modifying
+    @Transactional
     @Query("UPDATE UserEvent e SET e.read = true WHERE e.id IN :eventIds")
     void markAsRead(@Param("eventIds") List<Long> eventIds);
     
@@ -41,8 +44,9 @@ public interface UserEventRepository extends JpaRepository<UserEvent, Long> {
     List<UserEvent> findByUserIdAndRelatedShiftIdAndEventType(
         Long userId, Long shiftId, UserEvent.EventType eventType);
     
-    // Limpiar eventos antiguos ya leídos (para no llenar la DB)
+    // ✅ CORREGIDO: Limpiar eventos antiguos ya leídos
     @Modifying
+    @Transactional
     @Query("DELETE FROM UserEvent e WHERE e.read = true AND e.createdAt < :cutoffDate")
     void deleteOldReadEvents(@Param("cutoffDate") LocalDateTime cutoffDate);
     

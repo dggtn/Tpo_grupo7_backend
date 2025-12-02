@@ -41,12 +41,15 @@ public class UserEventService {
      * Solo devuelve eventos cuya hora programada ya llegó
      */
     public List<UserEventDTO> getPendingEvents(Long userId) {
+    try {
         LocalDateTime now = LocalDateTime.now();
         List<UserEvent> events = userEventRepository.findPendingEventsByUserId(userId, now);
         
         if (!events.isEmpty()) {
             // Marcar como entregados
-            List<Long> eventIds = events.stream().map(UserEvent::getId).collect(Collectors.toList());
+            List<Long> eventIds = events.stream()
+                .map(UserEvent::getId)
+                .collect(Collectors.toList());
             markAsDelivered(eventIds);
             
             System.out.println("[UserEventService.getPendingEvents] Entregando " + events.size() 
@@ -56,83 +59,137 @@ public class UserEventService {
         return events.stream()
             .map(UserEventDTO::fromEntity)
             .collect(Collectors.toList());
+            
+    } catch (Exception e) {
+        System.err.println("[UserEventService.getPendingEvents] Error: " + e.getMessage());
+        e.printStackTrace();
+        // Devolver lista vacía en caso de error para no romper el polling
+        return new java.util.ArrayList<>();
     }
+}
 
     /**
      * Marca eventos como entregados
      */
     @Transactional
     public void markAsDelivered(List<Long> eventIds) {
-        if (eventIds == null || eventIds.isEmpty()) return;
-        userEventRepository.markAsDelivered(eventIds, LocalDateTime.now());
+        try {
+            if (eventIds == null || eventIds.isEmpty()) return;
+            
+            // ✅ IMPORTANTE: Usar flush para asegurar que se ejecute inmediatamente
+            userEventRepository.markAsDelivered(eventIds, LocalDateTime.now());
+            userEventRepository.flush();
+            
+            System.out.println("[UserEventService.markAsDelivered] " + eventIds.size() + " eventos marcados");
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.markAsDelivered] Error: " + e.getMessage());
+            e.printStackTrace();
+            // No lanzar excepción para no romper el flujo
+        }
     }
+
 
     /**
      * Marca eventos como leídos
      */
     @Transactional
     public void markAsRead(List<Long> eventIds) {
-        if (eventIds == null || eventIds.isEmpty()) return;
-        userEventRepository.markAsRead(eventIds);
+        try {
+            if (eventIds == null || eventIds.isEmpty()) return;
+            
+            // ✅ IMPORTANTE: Usar flush para asegurar que se ejecute inmediatamente
+            userEventRepository.markAsRead(eventIds);
+            userEventRepository.flush();
+            
+            System.out.println("[UserEventService.markAsRead] " + eventIds.size() + " eventos marcados como leídos");
+            
+        } catch (Exception e) {
+            System.err.println("[UserEventService.markAsRead] Error: " + e.getMessage());
+            e.printStackTrace();
+            // No lanzar excepción para no romper el flujo
+        }
     }
 
     /**
      * Cuenta eventos no leídos
      */
     public long countUnreadEvents(Long userId) {
-        return userEventRepository.countByUserIdAndReadFalse(userId);
+        try {
+            return userEventRepository.countByUserIdAndReadFalse(userId);
+        } catch (Exception e) {
+            System.err.println("[UserEventService.countUnreadEvents] Error: " + e.getMessage());
+            return 0;
+        }
     }
 
     /**
      * Crea un evento de recordatorio de clase (1h antes)
      */
     public void createClassReminderEvent(Long userId, Course course, Shift shift, LocalDateTime classTime) {
-        try {
-            // Evitar duplicados
-            List<UserEvent> existing = userEventRepository.findByUserIdAndRelatedShiftIdAndEventType(
-                userId, shift.getId(), UserEvent.EventType.CLASS_REMINDER);
+    try {
+        // ✅ Verificar que la clase sea futura
+        if (classTime.isBefore(LocalDateTime.now())) {
+            System.out.println("[UserEventService] ⏭️ Clase en el pasado, omitiendo: " + classTime);
+            return;
+        }
+        
+        LocalDateTime reminderTime = classTime.minusHours(1);
+        
+        // ✅ IMPORTANTE: Evitar duplicados - buscar por fecha exacta
+        List<UserEvent> existing = userEventRepository.findByUserIdAndRelatedShiftIdAndEventType(
+            userId, shift.getId(), UserEvent.EventType.CLASS_REMINDER);
+        
+        // Filtrar los que sean para esta clase específica
+        boolean alreadyExists = existing.stream()
+            .anyMatch(e -> {
+                try {
+                    // Comparar con margen de 1 minuto
+                    long diffMinutes = Math.abs(
+                        java.time.Duration.between(e.getScheduledTime(), reminderTime).toMinutes()
+                    );
+                    return diffMinutes < 1;
+                } catch (Exception ex) {
+                    return false;
+                }
+            });
+        
+        if (alreadyExists) {
+            System.out.println("[UserEventService] ⏭️ Recordatorio ya existe para userId=" + userId 
+                + ", shiftId=" + shift.getId() + ", time=" + classTime);
+            return;
+        }
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("classTime", classTime.toString());
+        metadata.put("courseName", course.getName());
+        metadata.put("shiftHour", shift.getHoraInicio());
+        metadata.put("dayOfWeek", shift.getDiaEnQueSeDicta());
+        if (shift.getSede() != null) {
+            metadata.put("location", shift.getSede().getName());
+        }
+
+        UserEvent event = UserEvent.builder()
+            .userId(userId)
+            .eventType(UserEvent.EventType.CLASS_REMINDER)
+            .title("¡Clase en 1 hora!")
+            .message(String.format("Tu clase de %s comienza a las %s. ¡No la pierdas!", 
+                course.getName(), shift.getHoraInicio()))
+            .relatedShiftId(shift.getId())
+            .relatedCourseId(course.getId())
+            .scheduledTime(reminderTime) // 1 hora antes
+            .metadata(objectMapper.writeValueAsString(metadata))
+            .build();
+
+        userEventRepository.save(event);
+        System.out.println("[UserEventService] ✅ Recordatorio creado para userId=" + userId 
+            + " el " + reminderTime + " (clase a las " + classTime + ")");
             
-            // Filtrar solo los que sean para la misma fecha/hora
-            boolean alreadyExists = existing.stream()
-                .anyMatch(e -> e.getScheduledTime().isEqual(classTime.minusHours(1)));
-            
-            if (alreadyExists) {
-                System.out.println("[UserEventService] Recordatorio ya existe para userId=" + userId 
-                    + ", shiftId=" + shift.getId() + ", classTime=" + classTime);
-                return;
-            }
-
-            Map<String, Object> metadata = new HashMap<>();
-            metadata.put("classTime", classTime.toString());
-            metadata.put("courseName", course.getName());
-            metadata.put("shiftHour", shift.getHoraInicio());
-            metadata.put("dayOfWeek", shift.getDiaEnQueSeDicta());
-            if (shift.getSede() != null) {
-                metadata.put("location", shift.getSede().getName());
-            }
-
-            UserEvent event = UserEvent.builder()
-                .userId(userId)
-                .eventType(UserEvent.EventType.CLASS_REMINDER)
-                .title("¡Clase en 1 hora!")
-                .message(String.format("Tu clase de %s comienza a las %s. ¡No la pierdas!", 
-                    course.getName(), shift.getHoraInicio()))
-                .relatedShiftId(shift.getId())
-                .relatedCourseId(course.getId())
-                .scheduledTime(classTime.minusHours(1)) // 1 hora antes
-                .metadata(objectMapper.writeValueAsString(metadata))
-                .build();
-
-            userEventRepository.save(event);
-            System.out.println("[UserEventService] Recordatorio creado para userId=" + userId 
-                + " a las " + event.getScheduledTime());
-                
         } catch (Exception e) {
             System.err.println("[UserEventService.createClassReminderEvent] Error: " + e.getMessage());
             e.printStackTrace();
         }
     }
-
     /**
      * Crea evento de clase cancelada
      */
@@ -323,7 +380,7 @@ public class UserEventService {
      * Tarea programada: genera recordatorios para clases próximas
      * Se ejecuta cada 15 minutos
      */
-    @Scheduled(fixedRate = 900000) // 15 minutos
+    // @Scheduled(fixedRate = 900000) // 15 minutos
     @Transactional
     public void generateUpcomingClassReminders() {
         try {
