@@ -119,18 +119,19 @@ public class SecurityConfig {
 	@Bean
 	public UrlBasedCorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration corsConfig = new CorsConfiguration();
-		// Permitir orígenes específicos para desarrollo
-    	corsConfig.setAllowedOrigins(List.of(
-			"http://10.0.2.2:8080",     // Emulador Android
-			"http://localhost:8080",     // Desarrollo local
-			"http://127.0.0.1:8080",     // Loopback
-			"http://192.168.1.116:8081" ,         // Red local (wildcard)
-            "http://192.168.100.9:8080",
-            "http://192.168.0.15:8080",
-            "http://192.168.1.236:8080",
-            "http://192.168.0.12:8080"
+        // Permitir orígenes específicos para desarrollo
+        corsConfig.setAllowedOrigins(List.of(
+            "http://localhost:8080",     // Desarrollo local (incluye 127.0.0.1)
+            "http://10.0.2.2:8080",      // Emulador Android
 
-    	));
+            // Si usas un dispositivo físico por WiFi DEBES incluir su URL de frontend:
+            // Usa un comodín si el puerto del bundler de Expo (8081) es el que hace la llamada:
+            "http://192.168.0.12:8081", // <-- Reemplaza por la IP de tu PC actual con puerto 8081
+
+            // O mejor, si todas las llamadas del frontend salen por 8081, usa esto para desarrollo local:
+            "http://*:8081" // <-- Usa esto CON PRECAUCIÓN, permite cualquier IP local en ese puerto
+        ));
+
     
     	// O usar setAllowedOriginPatterns para más flexibilidad
     	// corsConfig.setAllowedOriginPatterns(List.of("*"));
