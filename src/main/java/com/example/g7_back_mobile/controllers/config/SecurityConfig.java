@@ -125,7 +125,7 @@ public class SecurityConfig {
             "http://127.0.0.1:*",
             "http://10.0.2.2:*",           // Emulador Android
             "http://192.168.*.*:*",        // Cualquier IP local
-            "http://192.168.0.12:*",       // IP del teléfono (si React Native envía Origin)
+            "http://192.168.1.50:*",       // IP del teléfono (si React Native envía Origin)
             "http://192.168.1.236:*"       // IP de tu PC (no debería ser necesario)
 
     	));
